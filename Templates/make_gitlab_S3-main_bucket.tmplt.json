@@ -1,0 +1,26 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "This template sets up the S3 Bucket used by an GitLab instance.",
+  "Parameters": {
+    "GitlabBucket": {
+      "Description": "S3 Bucket to host GitLab content.",
+      "Type": "String",
+      "AllowedPattern": "^[a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9]*$"
+    }
+  },
+  "Resources": {
+    "GitlabS3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "AccessControl": "BucketOwnerFullControl",
+        "BucketName": { "Ref" : "GitlabBucket" }
+      }
+    }
+  },
+  "Outputs": {
+    "GitlabBucketName": {
+      "Value": { "Ref": "GitlabS3Bucket" },
+      "Description": "Artifactory artifact S3 Bucket Name"
+    }
+  }
+}

@@ -1,0 +1,794 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "This template deploys a standalone Linux instance to host a GitLab repository server.",
+  "Parameters": {
+    "AmiId": {
+      "Description": "ID of the AMI to launch",
+      "Type": "String",
+      "AllowedPattern": "^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"
+    },
+    "AdminPubkeyURL": {
+      "Description": "URL the file containing the admin users' SSH public keys.",
+      "Type": "String",
+      "AllowedPattern": "^$|^http://.*$|^https://.*$"
+    },
+    "AppVolumeDevice": {
+      "Description": "Device to mount an extra EBS volume. Leave blank to launch without an extra application volume",
+      "Type": "String",
+      "Default": "",
+      "AllowedValues": [
+        "",
+        "/dev/xvdf",
+        "/dev/xvdg",
+        "/dev/xvdh",
+        "/dev/xvdi",
+        "/dev/xvdj"
+      ]
+    },
+    "AppVolumeMountPath": {
+      "Description": "Filesystem path to mount the extra app volume. Ignored if \"AppVolumeDevice\" is blank",
+      "Type": "String",
+      "Default": "/opt/gitlab",
+      "AllowedPattern": "/.*"
+    },
+    "AppVolumeType": {
+      "Description": "Type of EBS volume to create. Ignored if \"AppVolumeDevice\" is blank",
+      "Type": "String",
+      "Default": "gp2",
+      "AllowedValues": [
+        "gp2",
+        "io1",
+        "sc1",
+        "st1",
+        "standard"
+      ]
+    },
+    "AppVolumeSize": {
+      "Description": "Size in GB of the EBS volume to create. Ignored if \"AppVolumeDevice\" is blank",
+      "Type": "Number",
+      "Default": "10",
+      "MinValue": "5",
+      "MaxValue": "16384",
+      "ConstraintDescription": "Must be between 5GB and 16384GB."
+    },
+    "BackupBucket": {
+      "Description": "S3 Bucket to host backups of GitLab config-data",
+      "Type": "String",
+      "AllowedPattern": "^[a-z][a-z0-9-]*$"
+    },
+    "BackupCronURL": {
+      "Description": "URL to the GitLab backup cron-file",
+      "Type": "String",
+      "AllowedPattern": "^$|^http://.*$|^https://.*$"
+    },
+    "BackupFolder": {
+      "Description": "Folder in S3 Bucket to host backups of GitLab config-data",
+      "Type": "String",
+      "AllowedPattern": "^[a-z][a-z0-9-]*$"
+    },
+    "DnsSuffix" : {
+      "Description" : "Suffix for GitLab's hostname and DNS record",
+      "Type": "String",
+      "ConstraintDescription": "An alphanumeric string to complete the domain portion of the instance's FQDN."
+    },
+    "EpelRepo": {
+      "Description" : "Name of network's EPEL repo.",
+      "Type": "String",
+      "Default": "epel",
+      "AllowedPattern": "^[a-z][a-z0-9-]*$",
+      "ConstraintDescription": "An alphanumeric string that represents the EPEL yum repo's label."
+    },
+    "GitLabConfScript": {
+      "Description": "URL of the script that localizes GitLab for running in the target environment",
+      "Type": "String",
+      "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$"
+    },
+    "GitLabPrepScript": {
+      "Description": "URL of the script that preps the OS to host GitLab",
+      "Type": "String",
+      "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$"
+    },
+    "InstanceType": {
+      "Description": "Amazon EC2 instance type",
+      "Type": "String",
+      "Default": "t2.micro",
+      "AllowedValues": [
+        "t2.micro",
+        "t2.small",
+        "t2.medium",
+        "t2.large",
+        "c4.large",
+        "c4.xlarge",
+        "m3.xlarge",
+        "m4.large",
+        "m4.xlarge",
+        "m4.2xlarge",
+        "r3.2xlarge"
+      ]
+    },
+    "InstanceRole": {
+      "Description": "IAM instance role to apply to the instance(s)",
+      "Type": "String",
+      "Default": ""
+    },
+    "KeyPairName": {
+      "Description": "Public/private key pairs allow you to securely connect to your instance after it launches",
+      "Type": "AWS::EC2::KeyPair::KeyName"
+    },
+    "LdapHost": {
+      "Description": "FQDN of the LDAP host/Active Directory server.",
+      "Type": "String",
+      "AllowedPattern": "^[a-z0-9.-]*$"
+    },
+    "LdapPort": {
+      "Description": "TCP Port that the LDAP/AD service listens on.",
+      "Type": "String",
+      "Default": "389",
+      "AllowedPattern": "^[0-9]*$"
+    },
+    "LdapCrypt": {
+      "Description": "Encryption-method to use for securing the LDAP connection (\"plain\" is BASE64-encoded).",
+      "Type": "String",
+      "Default": "plain",
+      "AllowedValues": [
+        "plain",
+        "ssl",
+        "tls"
+      ]
+    },
+    "LdapProxyUser": {
+      "Description": "Name of the user that has directory-lookup privileges on the target directory service. Use DN or UPN format.",
+      "Type": "String"
+    },
+    "LdapUserPassword": {
+      "Description": "Password of the user that has directory-lookup privileges on the target directory service.",
+      "Type": "String"
+    },
+    "LdapSearchBase": {
+      "Description": "DN of the LDAP search-scope.",
+      "Type": "String"
+    },
+    "NoPublicIp": {
+      "Description": "Controls whether to assign the instance a public IP. Recommended to leave at \"true\" _unless_ launching in a public subnet",
+      "Type": "String",
+      "Default": "true",
+      "AllowedValues": [
+        "false",
+        "true"
+      ]
+    },
+    "NoReboot": {
+      "Description": "Controls whether to reboot the instance as the last step of cfn-init execution",
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": [
+        "false",
+        "true"
+      ]
+    },
+    "PipIndexFips": {
+      "Description" : "URL of pip index  that is compatible with FIPS 140-2 requirements.",
+      "Type": "String",
+      "Default": "https://pypi.org/simple/",
+      "AllowedPattern": "^$|^http://.*$|^https://.*$"
+    },
+    "PipRpm": {
+      "Description" : "Name of preferred pip RPM.",
+      "Type": "String",
+      "Default": "python2-pip"
+    },
+    "ProvisionUser": {
+      "Description": "Default login user account name.",
+      "Type": "String",
+      "Default": "autogitlab",
+      "AllowedPattern": "[a-z0-9]{6,12}+",
+      "ConstraintDescription": "Alphanumeric string between 6 and 12 characters."
+    },
+    "PyStache": {
+      "Description" : "Name of preferred pystache RPM.",
+      "Type": "String",
+      "Default": "pystache"
+    },
+    "RdsDbHost": {
+      "Description" : "RDS End-point Name (FQDN)",
+      "Type": "String",
+      "AllowedPattern": "^[a-zA-Z0-9.-]*$",
+      "ConstraintDescription": "Alphanumeric string DNS FQDN representing the RDS end-point name."
+    },
+    "RdsDbInstance": {
+      "Description" : "RDS database name.",
+      "Type": "String",
+      "AllowedPattern": "^[a-z][a-zA-Z0-9_]*$",
+      "ConstraintDescription": "Alphanumeric string representing the RDS database instance."
+    },
+    "RdsDbAdmin": {
+      "Description" : "RDS database-user name.",
+      "Type": "String",
+      "AllowedPattern": "^[a-z]*$",
+      "ConstraintDescription": "Alphanumeric string representing the RDS database-user name."
+    },
+    "RdsDbPasswd": {
+      "Description" : "RDS database-user login password.",
+      "Type": "String"
+    },
+    "SecurityGroupIds": {
+      "Description": "List of security groups to apply to the instance(s)",
+      "Type": "List<AWS::EC2::SecurityGroup::Id>"
+    },
+    "ServerHostname" : {
+      "Description" : "Node-name for GitLab's hostname and DNS record",
+      "Type": "String",
+      "Default": "gitlab",
+      "ConstraintDescription": "An alphanumeric string to complete the hostname portion of the instance's FQDN."
+    },
+    "SubNetId": {
+      "Description": "Subnet to associate to the Instance",
+      "Type": "AWS::EC2::Subnet::Id"
+    },
+    "SystemPrepBootstrapUrl": {
+      "Description": "URL to the SystemPrep Bootstrapper",
+      "Type": "String",
+      "Default": "https://s3.amazonaws.com/systemprep/BootStrapScripts/SystemPrep-Bootstrap--Linux.sh",
+      "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$"
+    },
+    "SystemPrepEnvironment": {
+      "Description": "Environment in which the instance is being deployed",
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": [
+        "false",
+        "dev",
+        "test",
+        "prod"
+      ]
+    },
+    "CfnEndpointUrl": {
+      "Description": "URL to the CloudFormation Endpoint. e.g. https://cloudformation.us-east-1.amazonaws.com",
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^$|^http://.*$|^https://.*$"
+    }
+  },
+  "Conditions": {
+    "CreateAppVolume": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "AppVolumeDevice"
+            },
+            ""
+          ]
+        }
+      ]
+    },
+    "UseCfnUrl": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "CfnEndpointUrl"
+            },
+            ""
+          ]
+        }
+      ]
+    },
+    "Reboot": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "NoReboot"
+            },
+            "true"
+          ]
+        }
+      ]
+    },
+    "AssignInstanceRole": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "InstanceRole"
+            },
+            ""
+          ]
+        }
+      ]
+    },
+    "AssignPublicIp": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "NoPublicIp"
+            },
+            "true"
+          ]
+        }
+      ]
+    }
+  },
+  "Mappings": {
+  },
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Label": {
+            "default": "EC2 Instance Configuration"
+          },
+          "Parameters": [
+            "AmiId",
+            "InstanceType",
+            "InstanceRole",
+            "ProvisionUser",
+            "KeyPairName",
+            "NoReboot",
+            "SecurityGroupIds"
+          ]
+        },
+        {
+          "Label": {
+            "default": "EC2 Application EBS Volume"
+          },
+          "Parameters": [
+            "AppVolumeDevice",
+            "AppVolumeMountPath",
+            "AppVolumeSize",
+            "AppVolumeType"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Network Configuration"
+          },
+          "Parameters": [
+            "NoPublicIp",
+            "ServerHostname",
+            "DnsSuffix",
+            "SubNetId"
+          ]
+        },
+        {
+          "Label": {
+            "default": "S3 Resources"
+          },
+          "Parameters": [
+            "BackupBucket",
+            "BackupCronURL",
+            "BackupFolder"
+          ]
+        },
+        {
+          "Label": {
+            "default": "RDS Parameters"
+          },
+          "Parameters": [
+            "RdsDbHost",
+            "RdsDbInstance",
+            "RdsDbAdmin",
+            "RdsDbPasswd"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Directory Service Parameters"
+          },
+          "Parameters": [
+            "LdapHost",
+            "LdapPort",
+            "LdapCrypt",
+            "LdapProxyUser",
+            "LdapUserPassword",
+            "LdapSearchBase"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Miscellaneous Parameters"
+          },
+          "Parameters": [
+            "AdminPubkeyURL",
+            "EpelRepo",
+            "GitLabPrepScript",
+            "GitLabConfScript",
+            "PipIndexFips",
+            "PipRpm",
+            "PyStache"
+          ]
+        },
+        {
+          "Label": {
+            "default": "CloudFormation Configuration"
+          },
+          "Parameters": [
+            "CfnEndpointUrl"
+          ]
+        }
+      ],
+      "ParameterLabels": {
+        "ForceNewInstancesToggle": {
+          "default": "Force New Instances"
+        }
+      }
+    },
+    "AWS::CloudFormation::Designer": {
+      "c49ece7d-56d3-47af-a63e-6e00ea2cb068": {
+        "size": {
+          "width": 60,
+          "height": 60
+        },
+        "position": {
+          "x": 60,
+          "y": 90
+        },
+        "z": 1,
+        "embeds": []
+      }
+    }
+  },
+  "Resources": {
+    "GitLabHost": {
+      "Type": "AWS::EC2::Instance",
+      "Metadata" : {
+        "AWS::CloudFormation::Init" : {
+          "config" : {
+            "files" : {
+              "/etc/cfn/cfn-hup.conf" : {
+                "content" : {
+                  "Fn::Join" : ["", [
+                    "[main]\n",
+                    "stack=", { "Ref" : "AWS::StackId" }, "\n",
+                    "region=", { "Ref" : "AWS::Region" }, "\n",
+                    {
+                      "Fn::If" : [
+                        "AssignInstanceRole", {
+                          "Fn::Join" : [ "", [
+                            "role=",
+                            { "Ref" : "InstanceRole" },
+                            "\n"
+                          ]]
+                        },
+                        ""
+                      ]
+                    },
+                    {
+                      "Fn::If" : [
+                        "AssignInstanceRole", {
+                          "Fn::Join" : [ "", [
+                            "url=",
+                            { "Ref" : "CfnEndpointUrl" },
+                            "\n"
+                          ]]
+                        },
+                        ""
+                      ]
+                    }
+                  ]]
+                },
+                "mode" : "000400",
+                "owner" : "root",
+                "group" : "root"
+              },
+              "/etc/cfn/hooks.d/cfn-auto-reloader.conf" : {
+                "content" : {
+                  "Fn::Join" : ["", [
+                    "[cfn-auto-reloader-hook]\n",
+                    "triggers=post.update\n",
+                    "path=Resources.GitLabHost.Metadata\n",
+                    "action=/opt/aws/bin/cfn-init -v -c update",
+                    " --stack ", { "Ref" : "AWS::StackName" },
+                    " --resource GitLabHost",
+                    {
+                      "Fn::If" : [
+                        "AssignInstanceRole",
+                        {
+                          "Fn::Join" : [ "", [
+                            " --role ",
+                            { "Ref" : "InstanceRole" }
+                          ]]
+                        },
+                        ""
+                      ]
+                    },
+                    {
+                      "Fn::If" : [
+                        "UseCfnUrl",
+                        {
+                          "Fn::Join" : [ "", [
+                            " --url ",
+                            { "Ref" : "CfnEndpointUrl" }
+                          ]]
+                        },
+                        ""
+                      ]
+                    }
+                  ]]
+                },
+                "mode" : "000400",
+                "owner" : "root",
+                "group" : "root"
+              }
+            },
+            "services" : {
+              "sysvinit" : {
+                "cfn-hup" : {
+                  "enabled" : "true",
+                  "ensureRunning" : "true",
+                  "files" : [
+                    "/etc/cfn/cfn-hup.conf",
+                    "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Count": "1",
+          "Timeout": "PT30M"
+        }
+      },
+      "Properties": {
+        "ImageId": {
+          "Ref": "AmiId"
+        },
+        "InstanceType": {
+          "Ref": "InstanceType"
+        },
+        "IamInstanceProfile": {
+          "Fn::If": [
+            "AssignInstanceRole",
+            {
+              "Ref": "InstanceRole"
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Ref": "AWS::StackName"
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "BlockDeviceMappings": [
+          {
+            "DeviceName": "/dev/sda1",
+            "Ebs": {
+              "VolumeType": "gp2",
+              "DeleteOnTermination": "true"
+            }
+          },
+          {
+            "Fn::If": [
+              "CreateAppVolume",
+              {
+                "DeviceName": {
+                  "Ref": "AppVolumeDevice"
+                },
+                "Ebs": {
+                  "VolumeSize": {
+                    "Ref": "AppVolumeSize"
+                  },
+                  "VolumeType": {
+                    "Ref": "AppVolumeType"
+                  },
+                  "DeleteOnTermination": "true"
+                }
+              },
+              {
+                "Ref": "AWS::NoValue"
+              }
+            ]
+          }
+        ],
+        "KeyName": {
+          "Ref": "KeyPairName"
+        },
+        "NetworkInterfaces": [
+          {
+            "DeviceIndex": "0",
+            "AssociatePublicIpAddress": {
+              "Fn::If": [
+                "AssignPublicIp",
+                "true",
+                "false"
+              ]
+            },
+            "GroupSet": {
+              "Ref": "SecurityGroupIds"
+            },
+            "SubnetId": {
+              "Ref": "SubNetId"
+            }
+          }
+        ],
+        "UserData": {
+          "Fn::Base64" : {
+            "Fn::Join" : [ "", [
+              "#cloud-config\n",
+              "\n",
+              "system_info:\n",
+              "  default_user:\n",
+              "    name: ",
+                { "Ref" : "ProvisionUser" },
+              "\n",
+              {
+                "Fn::If" :
+                [
+                  "CreateAppVolume",
+                  {
+                    "Fn::Join" : [ "", [
+                      "\n",
+                      "bootcmd:\n",
+                      "  - cloud-init-per instance mkfs-appvolume mkfs -t ext4 ",
+                      { "Ref" : "AppVolumeDevice" },
+                      "\n",
+                      "mounts:\n",
+                      "  - [ ",
+                        { "Ref" : "AppVolumeDevice" }, ", ",
+                        { "Ref" : "AppVolumeMountPath" },
+                      " ]\n"
+                    ]]
+                  },
+                  { "Ref" : "AWS::NoValue" }
+                ]
+              },
+              "\n",
+              "hostname: ",
+                     { "Ref" : "ServerHostname" },
+              "\n",
+              "fqdn: ",
+                     { "Ref" : "ServerHostname" },
+                     ".",
+                     { "Ref" : "DnsSuffix" },
+              "\n",
+              "manage_etc_hosts: true\n",
+              "\n",
+              "runcmd:\n",
+              "  - |\n",
+              "      \n",
+              "      # Env-Vars for setting up RDS connectivity\n",
+              "      export GITLAB_DBHOST=",
+                       { "Ref" : "RdsDbHost" },
+                       "\n",
+              "      export GITLAB_DATABASE=",
+                       { "Ref" : "RdsDbInstance" },
+                       "\n",
+              "      export GITLAB_DBUSER=",
+                       { "Ref" : "RdsDbAdmin" },
+                       "\n",
+              "      export GITLAB_PASSWORD=",
+                       { "Ref" : "RdsDbPasswd" },
+                       "\n",
+              "      export GITLAB_AD_HOST=",
+                       { "Ref" : "LdapHost" },
+                       "\n",
+              "      export GITLAB_AD_PORT=",
+                       { "Ref" : "LdapPort" },
+                       "\n",
+              "      export GITLAB_AD_BINDCRYPT=",
+                       { "Ref" : "LdapCrypt" },
+                       "\n",
+              "      export GITLAB_AD_BINDUSER=",
+                       { "Ref" : "LdapProxyUser" },
+                       "\n",
+              "      export GITLAB_AD_BINDPASS=",
+                       { "Ref" : "LdapUserPassword" },
+                       "\n",
+              "      export GITLAB_AD_SRCHBASE=",
+                       { "Ref" : "LdapSearchBase" },
+                       "\n",
+              "      \n",
+              "      # Helper function\n",
+              "      function error_exit {\n",
+              "         /opt/aws/bin/cfn-signal -e 1 --stack ",
+                           { "Ref" : "AWS::StackName" },
+                           " --resource GitLabHost\n",
+              "         exit 1\n",
+              "      }\n",
+              "      \n",
+              "      # Install missing RPMs\n",
+              "      yum --enablerepo=",
+                        { "Ref" : "EpelRepo" },
+                        " install -y ",
+                        { "Ref" : "PyStache" },
+                        " ",
+                        { "Ref" : "PipRpm" },
+                        "|| error_exit 'Could not change install dependent RPMs.'\n",
+              "      \n",
+              "      # Initialize the Cfn subsystems\n",
+              "      /opt/aws/bin/cfn-init -s ",
+                        { "Ref" : "AWS::StackName" },
+                                 " -r GitLabHost ",
+                      " --region ",
+                         { "Ref" : "AWS::Region" },
+                         " && echo 'Successfully ran cfn-init'",
+                         " || error_exit 'Failed to run cfn-init' > /dev/stderr\n",
+              "      \n",
+              "      # Export cert bundle ENVs\n",
+              "      export AWS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
+              "      export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
+              "      \n",
+              "      # Do pip-stuff\n",
+              "      pip install -i ",
+                        { "Ref": "PipIndexFips" },
+                        " --upgrade pip\n",
+              "      \n",
+              "      # Add amin SSH keys to the ",
+                        { "Ref": "ProvisionUser" },
+                     " account\n",
+              "      PROVHOME=$(getent passwd ",
+                        { "Ref": "ProvisionUser" },
+                        " | awk -F\":\" '{print $6}')\n",
+              "      curl -skL ",
+                        { "Ref": "AdminPubkeyURL" },
+                        " >> ${PROVHOME}/.ssh/authorized_keys || ",
+                     "error_exit 'Failed to install admin-users keys'\n",
+              "      \n",
+              "      # Grab and run GitLab OS-prep script\n",
+              "      curl -skL ",
+                        { "Ref": "GitLabPrepScript" },
+                        " -o /tmp/gitlab_instprep.sh || ",
+                        "error_exit 'Failed to download ",
+                        { "Ref": "GitLabPrepScript" },
+                        "'\n",
+              "      install -b -m 0700 /tmp/gitlab_instprep.sh ",
+                        "/root/gitlab_instprep.sh\n",
+              "      /root/gitlab_instprep.sh || ",
+                        "error_exit 'Errors detected while running ",
+                        "/root/gitlab_instprep.sh'\n",
+              "      export GITLAB_EXTERNURL=\"",
+                        { "Ref" : "ServerHostname" },
+                        ".",
+                        { "Ref" : "DnsSuffix" },
+                        "\"\n",
+              "      curl -skL ",
+                        { "Ref": "GitLabConfScript" },
+                        " -o /tmp/gitlab_config.sh || ",
+                        "error_exit 'Failed to download ",
+                        { "Ref": "GitLabConfScript" },
+                        "'\n",
+              "      install -b -m 0700 /tmp/gitlab_config.sh ",
+                        "/root/gitlab_config.sh\n",
+              "      /root/gitlab_config.sh || ",
+                        "error_exit 'Errors detected while running ",
+                        "/root/gitlab_config.sh'\n",
+              "      \n",
+              "      # Signal Cfn that we're good\n",
+              "      /opt/aws/bin/cfn-signal -e 0 --stack ",
+                        { "Ref" : "AWS::StackName" },
+                        " --resource GitLabHost --url ",
+                        { "Ref" : "CfnEndpointUrl" },
+                        "\n",
+              ""
+              ]
+            ]
+          }
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "GitLabInstanceId": {
+      "Value": { "Ref": "GitLabHost" },
+      "Description" : "Instance ID"
+    }
+  }
+}
