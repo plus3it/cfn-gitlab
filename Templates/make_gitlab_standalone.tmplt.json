@@ -88,6 +88,10 @@
       "Type": "String",
       "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$"
     },
+    "GitRepoNfsUri": {
+      "Description": "URI of NFS share hosting persisted git repository content.",
+      "Type": "String"
+    },
     "InstanceType": {
       "Description": "Amazon EC2 instance type",
       "Type": "String",
@@ -761,6 +765,9 @@
                        { "Ref" : "SmtpNoticeUser" },
                        "@",
                        { "Ref" : "SmtpMessageDomain" },
+                       "\n",
+              "      export GITLAB_NFS_URI=",
+                       { "Ref" : "GitRepoNfsUri" },
                        "\n",
               "      \n",
               "      # Helper function\n",

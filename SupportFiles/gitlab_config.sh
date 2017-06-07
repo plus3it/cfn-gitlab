@@ -17,6 +17,7 @@ GITLAB_AD_BINDCRYPT="${GITLAB_AD_BINDCRYPT:-UNDEF}"
 GITLAB_AD_BINDUSER="${GITLAB_AD_BINDUSER:-UNDEF}"
 GITLAB_AD_BINDPASS="${GITLAB_AD_BINDPASS:-UNDEF}"
 GITLAB_AD_SRCHBASE="${GITLAB_AD_SRCHBASE:-UNDEF}"
+NFSURI=${GITLAB_NFS_URI:-UNDEF}
 SMTP_FQDN="${GITLAB_SMTP_RELAY:-UNDEF}"
 SMTP_PORT="${GITLAB_SMTP_PORT:-UNDEF}"
 SMTP_USER="${GITLAB_SMTP_USER:-UNDEF}"
@@ -132,6 +133,25 @@ gitlab-ctl reconfigure || \
     err_exit "Localization did not succeed. Aborting."
 echo "Localization successful."
 
+#
+# Ensure that EFS-persisted repositories are present
+#####
+if [[ ${NFSURI} = UNDEF ]]
+then
+   echo "No NFS share declared for persisting git repository data"
+else
+   echo "Adding NFS-hosted, persisted git repository data to fstab"
+   (
+    printf "%s\t/var/opt/gitlab/git-data\tnfs4\trw,relatime,vers=4.1," "${NFSURI}" ;
+    printf "rsize=1048576,wsize=1048576,namlen=255,hard,";
+    printf "proto=tcp,timeo=600,retrans=2\t0 0\n"
+   ) >> /etc/fstab || err_exit "Failed to add NFS volume to fstab"
+mount /var/opt/gitlab/git-data || err_exit "Failed to mount GitLab repository dir"
+fi
+
+#
+# Restart service to get new config bits
+#####
 printf "###\n# Restarting GitLab to finalize settings...\n###\n"
 gitlab-ctl restart || \
       err_exit "Restart did not succeed. Check the logs."

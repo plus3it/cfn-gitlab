@@ -1,4 +1,5 @@
 #!/bin/sh
+# shellcheck disable=SC2015
 #
 # Script to handle preparation of the instance for installing
 # and configuring GitLab
@@ -21,6 +22,8 @@ DEPRPMS=(
           policycoreutils
           openssh-server
           openssh-clients
+          nfs-utils
+          nfs4-acl-tools
         )
 FWPORTS=(
           80
@@ -28,7 +31,7 @@ FWPORTS=(
         )
 
 # Log failures and exit
-function error_exit {
+function err_exit {
    echo "${1}"
    logger -t "${PROGNAME}" -p ${LOGFACIL} "${1}"
    exit 1
@@ -38,7 +41,7 @@ function error_exit {
 function FwStuff {
    # Temp-disable SELinux (need when used in cloud-init context)
    setenforce 0 || \
-      error_exit "Failed to temp-disable SELinux"
+      err_exit "Failed to temp-disable SELinux"
    echo "Temp-disabled SELinux"
 
    if [[ $(systemctl --quiet is-active firewalld)$? -eq 0 ]]
@@ -53,18 +56,40 @@ function FwStuff {
    do
       printf "Add firewall exception for port %s... " "${PORT}"
       ${FWCMD} --permanent "--add-port=${PORT}/tcp" || \
-         error_exit "Failed to add port ${PORT} to firewalld"
+         err_exit "Failed to add port ${PORT} to firewalld"
    done
 
    # Restart firewalld with new rules loaded
    printf "Reloading firewalld rules... "
    ${FWCMD} --reload || \
-      error_exit "Failed to reload firewalld rules"
+      err_exit "Failed to reload firewalld rules"
 
    # Restart SELinux
    setenforce 1 || \
-      error_exit "Failed to reactivate SELinux"
+      err_exit "Failed to reactivate SELinux"
    echo "Re-enabled SELinux"
+}
+
+##
+## Enable NFS-client pieces
+function NfsClientStart {
+   local NFSCLIENTSVCS=(
+            rpcbind
+            nfs-server
+            nfs-lock
+            nfs-idmap
+         )
+
+    # Enable and start services
+    for SVC in "${NFSCLIENTSVCS[@]}"
+    do
+       printf "Enabling %s... " "${SVC}"
+       systemctl enable "${SVC}" && echo "Success!" || \
+          err_exit "Failed to enable ${SVC}"
+       printf "Starting %s... " "${SVC}"
+       systemctl start "${SVC}" && echo "Success!" || \
+          err_exit "Failed to start ${SVC}"
+    done
 }
 
 # Check if we're missing any vendor-enumerated RPMs
@@ -85,7 +110,7 @@ if [[ ${#INSTRPMS[@]} -ne 0 ]]
 then
    echo "Will attempt to install the following RPMS: ${INSTRPMS[*]}"
    yum install -y "${INSTRPMS[@]}" || \
-      error_exit "Install of RPM-dependencies experienced failures"
+      err_exit "Install of RPM-dependencies experienced failures"
 else
    echo "No RPM-dependencies to satisfy"
 fi
@@ -97,37 +122,38 @@ do
    then
       printf "Starting %s..." ${MGSVC}
       systemctl start ${MGSVC} || \
-         error_exit "Failed to start ${MGSVC}!"
+         err_exit "Failed to start ${MGSVC}!"
       echo "Success!"
    fi
    if [[ $(systemctl --quiet is-enabled ${MGSVC})$? -ne 0 ]]
    then
       printf "Enabling %s..." ${MGSVC}
       systemctl enable ${MGSVC} || \
-         error_exit "Failed to enable ${MGSVC}!"
+         err_exit "Failed to enable ${MGSVC}!"
       echo "Success!"
    fi
 done
 
 # Call to firewall exceptions function
 FwStuff
+NfsClientStart
 
 # Install repo-def for repository hosting the GitLab RPM(s)
 curl -skL "${REPOSRC}" -o /etc/yum.repos.d/GitLab.repo || \
-   error_exit "Failed to install repodef for GitLab CE"
+   err_exit "Failed to install repodef for GitLab CE"
 echo "Successfully installed repodef for GitLab CE"
 # Ensure SCL repositories are available
 RELEASE=$(rpm -qf /etc/redhat-release --qf '%{name}')
 if [[ $(yum repolist all | grep -q scl)$? -ne 0 ]]
 then
    yum install -y "${RELEASE}-scl" || \
-      error_exit "Attempted install of Software CoLlections repodefs failed."
+      err_exit "Attempted install of Software CoLlections repodefs failed."
    echo "Successfully nstalled Software CoLlections repodefs"
 fi
 
 # Install a Ruby version that is FIPS compatible
 yum --enablerepo=*scl* install -y rh-ruby23 || \
-   error_exit "Install of updated Ruby RPM failed."
+   err_exit "Install of updated Ruby RPM failed."
 echo "Installed updated Ruby RPM"
 
 # Permanently eable the SCL version of Ruby
@@ -138,7 +164,7 @@ EOF
 
 # shellcheck disable=SC1091
 source /etc/profile.d/scl-ruby.sh || \
-   error_exit "Failed to reset Ruby-location to updated version"
+   err_exit "Failed to reset Ruby-location to updated version"
 echo "Reset Ruby-location to updated version"
 
 # Disable Chef's FIPS stuff
@@ -148,11 +174,11 @@ EOF
 
 # shellcheck disable=SC1091
 source /etc/profile.d/chef.sh || \
-   error_exit "Failed to shut off FIPS-checking in embedded Chef Gem"
+   err_exit "Failed to shut off FIPS-checking in embedded Chef Gem"
 echo "Shut off FIPS-checking in embedded Chef Gem"
 
 # Do base-install of GitLab RPM
 printf "Installing GitLab CE"
 yum install -y gitlab-ce || \
-   error_exit "Install failed."
+   err_exit "Install failed."
 echo "Install succeeded. Gitlab must now be configured"
