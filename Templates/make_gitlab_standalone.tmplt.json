@@ -221,26 +221,39 @@
       "Default": "gitlab",
       "ConstraintDescription": "An alphanumeric string to complete the hostname portion of the instance's FQDN."
     },
+    "SmtpAuthSender": {
+      "Description" : "Authorized SMTP-relay sender ID.",
+      "Type": "String"
+    },
+    "SmtpMessageDomain": {
+      "Description" : "@DOMAIN value for notification mails.",
+      "Type": "String"
+    },
+    "SmtpNoticeUser": {
+      "Description" : "User to set in outbound messages \"From:\" address.",
+      "Type": "String"
+    },
+    "SmtpRelayFqdn": {
+      "Description" : "FQDN of the SMTP-relay host.",
+      "Type": "String"
+    },
+    "SmtpRelayPort": {
+      "AllowedValues": [
+        "25",
+        "465",
+        "587"
+      ],
+      "Default": "465",
+      "Description" : "Listener-port of the SMTP-relay host.",
+      "Type": "String"
+    },
+    "SmtpSenderPass": {
+      "Description" : "Password or the authorized SMTP-relay sender ID.",
+      "Type": "String"
+    },
     "SubNetId": {
       "Description": "Subnet to associate to the Instance",
       "Type": "AWS::EC2::Subnet::Id"
-    },
-    "SystemPrepBootstrapUrl": {
-      "Description": "URL to the SystemPrep Bootstrapper",
-      "Type": "String",
-      "Default": "https://s3.amazonaws.com/systemprep/BootStrapScripts/SystemPrep-Bootstrap--Linux.sh",
-      "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$"
-    },
-    "SystemPrepEnvironment": {
-      "Description": "Environment in which the instance is being deployed",
-      "Type": "String",
-      "Default": "false",
-      "AllowedValues": [
-        "false",
-        "dev",
-        "test",
-        "prod"
-      ]
     },
     "CfnEndpointUrl": {
       "Description": "URL to the CloudFormation Endpoint. e.g. https://cloudformation.us-east-1.amazonaws.com",
@@ -388,6 +401,19 @@
         },
         {
           "Label": {
+            "default": "SMTP Relay Service Parameters"
+          },
+          "Parameters": [
+            "SmtpRelayFqdn",
+            "SmtpRelayPort",
+            "SmtpMessageDomain",
+            "SmtpAuthSender",
+            "SmtpSenderPass",
+            "SmtpNoticeUser"
+          ]
+        },
+        {
+          "Label": {
             "default": "Miscellaneous Parameters"
           },
           "Parameters": [
@@ -410,6 +436,24 @@
         }
       ],
       "ParameterLabels": {
+        "SmtpAuthSender": {
+          "default": "Authorized Sender"
+        },
+        "SmtpMessageDomain": {
+          "default": "Notificaiton Domain"
+        },
+        "SmtpNoticeUser": {
+          "default": "'From:' User"
+        },
+        "SmtpRelayFqdn": {
+          "default": "Relay FQDN"
+        },
+        "SmtpRelayPort": {
+          "default": "Relay Port"
+        },
+        "SmtpSenderPass": {
+          "default": "Authentication Password"
+        },
         "ForceNewInstancesToggle": {
           "default": "Force New Instances"
         }
@@ -694,6 +738,29 @@
                        "\n",
               "      export GITLAB_AD_SRCHBASE=",
                        { "Ref" : "LdapSearchBase" },
+                       "\n",
+              "      export GITLAB_SMTP_FROM_DOM=",
+                       { "Ref" : "DnsSuffix" },
+                       "\n",
+              "      export GITLAB_SMTP_RELAY=",
+                       { "Ref" : "SmtpRelayFqdn" },
+                       "\n",
+              "      export GITLAB_SMTP_PORT=",
+                       { "Ref" : "SmtpRelayPort" },
+                       "\n",
+              "      export GITLAB_SMTP_USER=",
+                       { "Ref" : "SmtpAuthSender" },
+                       "\n",
+              "      export GITLAB_SMTP_PASS=",
+                       { "Ref" : "SmtpSenderPass" },
+                       "\n",
+              "      export GITLAB_SMTP_FROM_DOM=",
+                       { "Ref" : "SmtpMessageDomain" },
+                       "\n",
+              "      export GITLAB_SMTP_FROM_USER=",
+                       { "Ref" : "SmtpNoticeUser" },
+                       "@",
+                       { "Ref" : "SmtpMessageDomain" },
                        "\n",
               "      \n",
               "      # Helper function\n",

@@ -6,18 +6,24 @@
 PROGNAME=$(basename "${0}")
 GLCONFIG="/etc/gitlab/gitlab.rb"
 RUNDATE=$(date "+%Y%m%d%H%M")
-GITLAB_EXTERNURL=${GITLAB_EXTERNURL:-UNDEF}
-GITLAB_DATABASE=${GITLAB_DATABASE:-UNDEF}
-GITLAB_DBUSER=${GITLAB_DBUSER:-UNDEF}
-GITLAB_PASSWORD=${GITLAB_PASSWORD:-UNDEF}
-GITLAB_DBHOST=${GITLAB_DBHOST:-UNDEF}
-GITLAB_AD_HOST=${GITLAB_AD_HOST:-UNDEF}
-GITLAB_AD_PORT=${GITLAB_AD_PORT:-UNDEF}
-GITLAB_AD_BINDCRYPT=${GITLAB_AD_BINDCRYPT:-UNDEF}
-GITLAB_AD_BINDUSER=${GITLAB_AD_BINDUSER:-UNDEF}
-GITLAB_AD_BINDPASS=${GITLAB_AD_BINDPASS:-UNDEF}
-GITLAB_AD_SRCHBASE=${GITLAB_AD_SRCHBASE:-UNDEF}
-
+GITLAB_EXTERNURL="${GITLAB_EXTERNURL:-UNDEF}"
+GITLAB_DATABASE="${GITLAB_DATABASE:-UNDEF}"
+GITLAB_DBUSER="${GITLAB_DBUSER:-UNDEF}"
+GITLAB_PASSWORD="${GITLAB_PASSWORD:-UNDEF}"
+GITLAB_DBHOST="${GITLAB_DBHOST:-UNDEF}"
+GITLAB_AD_HOST="${GITLAB_AD_HOST:-UNDEF}"
+GITLAB_AD_PORT="${GITLAB_AD_PORT:-UNDEF}"
+GITLAB_AD_BINDCRYPT="${GITLAB_AD_BINDCRYPT:-UNDEF}"
+GITLAB_AD_BINDUSER="${GITLAB_AD_BINDUSER:-UNDEF}"
+GITLAB_AD_BINDPASS="${GITLAB_AD_BINDPASS:-UNDEF}"
+GITLAB_AD_SRCHBASE="${GITLAB_AD_SRCHBASE:-UNDEF}"
+SMTP_FQDN="${GITLAB_SMTP_RELAY:-UNDEF}"
+SMTP_PORT="${GITLAB_SMTP_PORT:-UNDEF}"
+SMTP_USER="${GITLAB_SMTP_USER:-UNDEF}"
+SMTP_PASS="${GITLAB_SMTP_PASS:-UNDEF}"
+SMTP_FROMDOM="${GITLAB_SMTP_FROM_DOM:-UNDEF}"
+SMTP_FROMUSR="${GITLAB_SMTP_FROM_USER:-UNDEF}"
+SMTP_RPLYUSR="noreply@${SMTP_FROMDOM}"
 
 #
 # Log errors and exit
@@ -79,6 +85,16 @@ gitlab_rails['db_database'] = "${GITLAB_DATABASE}"
 gitlab_rails['db_username'] = "${GITLAB_DBUSER}"
 gitlab_rails['db_password'] = "${GITLAB_PASSWORD}"
 gitlab_rails['db_host'] = "${GITLAB_DBHOST}"
+gitlab_rails['smtp_enable'] = true
+gitlab_rails['smtp_address'] = "${SMTP_FQDN}"
+gitlab_rails['smtp_port'] = "${SMTP_PORT}"
+gitlab_rails['smtp_user_name'] = "${SMTP_USER}"
+gitlab_rails['smtp_password'] = "${SMTP_PASS}"
+gitlab_rails['smtp_domain'] = "${SMTP_FROMDOM}"
+gitlab_rails['smtp_authentication'] = "login"
+gitlab_rails['smtp_enable_starttls_auto'] = true
+gitlab_rails['gitlab_email_from'] = "${SMTP_FROMUSR}"
+gitlab_rails['gitlab_email_reply_to'] = "${SMTP_RPLYUSR}"
 gitlab_rails['ldap_enabled'] = true
 gitlab_rails['ldap_servers'] = YAML.load <<-EOS
 main:
