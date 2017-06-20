@@ -22,13 +22,12 @@ DEPRPMS=(
           policycoreutils
           openssh-server
           openssh-clients
-          nfs-utils
-          nfs4-acl-tools
         )
 FWPORTS=(
           80
           443
         )
+SHARETYPE=${GITLAB_SHARE_TYPE:-UNDEV}
 
 # Log failures and exit
 function err_exit {
@@ -92,6 +91,26 @@ function NfsClientStart {
     done
 }
 
+
+###############
+## Main Program
+###############
+if [[ ${SHARETYPE} = nfs ]]
+then
+   DEPRPMS+=(
+         nfs-utils
+         nfs4-acl-tools
+      )
+elif [[ ${SHARETYPE} = glusterfs ]]
+then
+   DEPRPMS+=(
+         glusterfs
+	 glusterfs-fuse
+	 attr
+      )
+fi
+
+
 # Check if we're missing any vendor-enumerated RPMs
 for RPM in "${DEPRPMS[@]}"
 do
@@ -136,7 +155,10 @@ done
 
 # Call to firewall exceptions function
 FwStuff
-NfsClientStart
+if [[ ${SHARETYPE} = nfs ]]
+then
+   NfsClientStart
+fi
 
 # Install repo-def for repository hosting the GitLab RPM(s)
 curl -skL "${REPOSRC}" -o /etc/yum.repos.d/GitLab.repo || \

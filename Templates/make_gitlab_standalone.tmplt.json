@@ -88,8 +88,16 @@
       "Type": "String",
       "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$"
     },
-    "GitRepoNfsUri": {
-      "Description": "URI of NFS share hosting persisted git repository content.",
+    "GitRepoShareType": {
+      "AllowedValues": [
+        "glusterfs",
+        "nfs"
+      ],
+      "Description": "Type of network share hosting persisted git repository content.",
+      "Type": "String"
+    },
+    "GitRepoShareUri": {
+      "Description": "URI of network share hosting persisted git repository content.",
       "Type": "String"
     },
     "InstanceType": {
@@ -343,6 +351,7 @@
             "InstanceRole",
             "ProvisionUser",
             "KeyPairName",
+            "AdminPubkeyURL",
             "NoReboot",
             "SecurityGroupIds"
           ]
@@ -371,11 +380,20 @@
         },
         {
           "Label": {
-            "default": "S3 Resources"
+            "default": "Repository Storage"
           },
           "Parameters": [
-            "BackupBucket",
+            "GitRepoShareType",
+            "GitRepoShareUri"
+          ]
+        },
+        {
+          "Label": {
+            "default": "S3 Backups"
+          },
+          "Parameters": [
             "BackupCronURL",
+            "BackupBucket",
             "BackupFolder"
           ]
         },
@@ -421,25 +439,29 @@
             "default": "Miscellaneous Parameters"
           },
           "Parameters": [
-            "AdminPubkeyURL",
-            "EpelRepo",
             "GitLabPrepScript",
             "GitLabConfScript",
-            "PipIndexFips",
+            "EpelRepo",
             "PipRpm",
-            "PyStache"
-          ]
-        },
-        {
-          "Label": {
-            "default": "CloudFormation Configuration"
-          },
-          "Parameters": [
+            "PyStache",
+            "PipIndexFips",
             "CfnEndpointUrl"
           ]
         }
       ],
       "ParameterLabels": {
+        "KeyPairName": {
+          "default": "Primary Provisioning-key"
+        },
+        "AdminPubkeyURL": {
+          "default": "Secondary Provisioning keylist URL"
+        },
+        "GitRepoShareType": {
+          "default": "NAS FS-type"
+        },
+        "GitRepoShareUri": {
+          "default": "NAS Share-path"
+        },
         "SmtpAuthSender": {
           "default": "Authorized Sender"
         },
@@ -766,8 +788,11 @@
                        "@",
                        { "Ref" : "SmtpMessageDomain" },
                        "\n",
-              "      export GITLAB_NFS_URI=",
-                       { "Ref" : "GitRepoNfsUri" },
+              "      export GITLAB_SHARE_URI=",
+                       { "Ref" : "GitRepoShareUri" },
+                       "\n",
+              "      export GITLAB_SHARE_TYPE=",
+		       { "Ref" : "GitRepoShareType" },
                        "\n",
               "      \n",
               "      # Helper function\n",
