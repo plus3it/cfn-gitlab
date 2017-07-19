@@ -2,10 +2,9 @@
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "This template sets up the IAM role needed by an GitLab instance",
   "Parameters": {
-    "GitlabBucket": {
-      "Description": "S3 Bucket to host GitLab content.",
-      "Type": "String",
-      "AllowedPattern": "^[a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9]*$"
+    "GitlabBucketArn": {
+      "Description": "Arn of the S3 Bucket used to host GitLab content.",
+      "Type": "String"
     }
   },
   "Resources": {
@@ -24,13 +23,11 @@
               ],
               "Resource": [
                 { "Fn::Join" : [ "", [
-                  "arn:aws:s3:::",
-                    { "Ref" : "GitlabBucket" },
+                    { "Ref" : "GitlabBucketArn" },
                     ""
                 ]]},
                 { "Fn::Join" : [ "", [
-                  "arn:aws:s3:::",
-                    { "Ref" : "GitlabBucket" },
+                    { "Ref" : "GitlabBucketArn" },
                     "/*"
                 ]]}
               ]

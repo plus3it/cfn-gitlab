@@ -1,5 +1,5 @@
-#!/bin/sh
-#
+#!/bin/bash
+# shellcheck disable=SC2015
 # Script to configure the GitLab installation
 #
 #################################################################
@@ -34,6 +34,38 @@ function err_exit {
    echo "${1}" > /dev/stderr
    logger -t "${PROGNAME}" -p kern.crit "${1}"
    exit 1
+}
+
+#
+# Ensure persistent data storage is valid
+function ValidShare {
+   SHARESRVR="${SHAREURI/\:*/}"
+   SHAREPATH=${SHAREURI/${SHARESRVR}\:\//}
+
+   echo "Attempting to validate share-path"
+   printf "\t- Attempting to mount %s... " "${SHARESRVR}"
+   if [[ ${SHARETYPE} = glusterfs ]]
+   then
+      mount -t "${SHARETYPE}" "${SHARESRVR}":/"${SHAREPATH}" /mnt && echo "Success" ||
+        err_exit "Failed to mount ${SHARESRVR}"
+   elif [[ ${SHARETYPE} = nfs ]]
+   then
+      mount -t "${SHARETYPE}" "${SHARESRVR}":/ /mnt && echo "Success" ||
+        err_exit "Failed to mount ${SHARESRVR}"
+      printf "\t- Looking for %s in %s... " "${SHAREPATH}" "${SHARESRVR}"
+      if [[ -d /mnt/${SHAREPATH} ]]
+      then
+         echo "Success" 
+      else
+         echo "Not found."
+         printf "Attempting to create %s in %s... " "${SHAREPATH}" "${SHARESRVR}"
+         mkdir /mnt/"${SHAREPATH}" && echo "Success" ||
+           err_exit "Failed to create ${SHAREPATH} in ${SHARESRVR}"
+      fi
+   fi
+
+   printf "Cleaning up... "
+   umount /mnt && echo "Success" || echo "Failed"
 }
 
 
@@ -125,8 +157,20 @@ else
 fi
 
 #
+# Configure the GitLab pieces-parts
+#####
+printf "###\n# Localizing GitLab service elements...\n###\n"
+export CHEF_FIPS=""
+gitlab-ctl reconfigure || \
+    err_exit "Localization did not succeed. Aborting."
+echo "Localization successful."
+
+#
 # Ensure that share-persisted repositories are present
 #####
+
+ValidShare
+
 echo "Configure NAS-based persisted data..." 
 case ${SHARETYPE} in
    UNDEF)
@@ -150,16 +194,6 @@ case ${SHARETYPE} in
       mount /var/opt/gitlab/git-data || err_exit "Failed to mount GitLab repository dir"
       ;;
 esac
-
-#
-# Configure the GitLab pieces-parts
-#####
-printf "###\n# Localizing GitLab service elements...\n###\n"
-export CHEF_FIPS=""
-gitlab-ctl reconfigure || \
-    err_exit "Localization did not succeed. Aborting."
-echo "Localization successful."
-
 
 #
 # Restart service to get new config bits

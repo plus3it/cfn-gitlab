@@ -1,0 +1,76 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "This template sets up the EFS filesystems used by GitLab for persistent storage",
+  "Outputs": {
+    "EfsId": {
+      "Value": { "Ref": "GitLabEFS" },
+      "Description": "GitLab EFS filesystem-ID."
+    },
+    "EfsMntId1": {
+      "Value": { "Ref": "GitLabEFSMount1" },
+      "Description": "GitLab EFS mount-target ID."
+    },
+    "EfsMntId2": {
+      "Value": { "Ref": "GitLabEFSMount2" },
+      "Description": "GitLab EFS mount-target ID."
+    },
+    "EfsMntId3": {
+      "Value": { "Ref": "GitLabEFSMount3" },
+      "Description": "GitLab EFS mount-target ID."
+    }
+  },
+  "Parameters": {
+    "EfsSg": {
+      "Description": "List of security groups to apply to the EFS shares.",
+      "Type": "List<AWS::EC2::SecurityGroup::Id>"
+    },
+    "EfsSubnet": {
+      "Type": "List<AWS::EC2::Subnet::Id>",
+      "Description": "Select three subnets - each from different Availability Zones."
+    }
+  },
+  "Resources": {
+    "GitLabEFS" : {
+      "Type" : "AWS::EFS::FileSystem",
+      "Properties" : {
+        "FileSystemTags" : [
+          {
+            "Key" : "Name",
+            "Value" : {
+              "Fn::Join" : [
+                "", [
+                  { "Ref": "AWS::StackName" },
+                  "-GitLab_EFS"
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "GitLabEFSMount1" : {
+      "Type" : "AWS::EFS::MountTarget",
+      "Properties" : {
+        "FileSystemId": { "Ref": "GitLabEFS" },
+        "SecurityGroups": { "Ref": "EfsSg" },
+        "SubnetId": { "Fn::Select": [ "0", { "Ref": "EfsSubnet" } ] }
+      }
+    },
+    "GitLabEFSMount2" : {
+      "Type" : "AWS::EFS::MountTarget",
+      "Properties" : {
+        "FileSystemId": { "Ref": "GitLabEFS" },
+        "SecurityGroups": { "Ref": "EfsSg" },
+        "SubnetId": { "Fn::Select": [ "1", { "Ref": "EfsSubnet" } ] }
+      }
+    },
+    "GitLabEFSMount3" : {
+      "Type" : "AWS::EFS::MountTarget",
+      "Properties" : {
+        "FileSystemId": { "Ref": "GitLabEFS" },
+        "SecurityGroups": { "Ref": "EfsSg" },
+        "SubnetId": { "Fn::Select": [ "2", { "Ref": "EfsSubnet" } ] }
+      }
+    }
+  }
+}

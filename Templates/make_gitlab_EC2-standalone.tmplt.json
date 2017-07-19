@@ -53,8 +53,7 @@
     },
     "BackupBucket": {
       "Description": "S3 Bucket to host backups of GitLab config-data",
-      "Type": "String",
-      "AllowedPattern": "^[a-z][a-z0-9-]*$"
+      "Type": "String"
     },
     "BackupCronURL": {
       "Description": "URL to the GitLab backup cron-file",
@@ -63,8 +62,7 @@
     },
     "BackupFolder": {
       "Description": "Folder in S3 Bucket to host backups of GitLab config-data",
-      "Type": "String",
-      "AllowedPattern": "^[a-z][a-z0-9-]*$"
+      "Type": "String"
     },
     "DnsSuffix" : {
       "Description" : "Suffix for GitLab's hostname and DNS record",
@@ -195,6 +193,12 @@
       "Default": "autogitlab",
       "AllowedPattern": "[a-z0-9]{6,12}+",
       "ConstraintDescription": "Alphanumeric string between 6 and 12 characters."
+    },
+    "ProxyName": {
+      "Description" : "FQDN of public-facing reverse-proxy.",
+      "Type": "String",
+      "AllowedPattern": "^[a-z][a-z0-9.-]*[a-z]$",
+      "ConstraintDescription": "Alphanumeric string DNS FQDN representing the RDS end-point name."
     },
     "PyStache": {
       "Description" : "Name of preferred pystache RPM.",
@@ -735,6 +739,9 @@
               "  - |\n",
               "      \n",
               "      # Env-Vars for setting up RDS connectivity\n",
+              "      export GITLAB_PROXY_FQDN=",
+                       { "Ref" : "ProxyName" },
+                       "\n",
               "      export GITLAB_DBHOST=",
                        { "Ref" : "RdsDbHost" },
                        "\n",
@@ -794,6 +801,7 @@
               "      export GITLAB_SHARE_TYPE=",
 		       { "Ref" : "GitRepoShareType" },
                        "\n",
+              "      export GITLAB_EXTERNURL=\"${GITLAB_PROXY_FQDN}\"\n",
               "      \n",
               "      # Helper function\n",
               "      function error_exit {\n",
@@ -820,6 +828,11 @@
                          { "Ref" : "AWS::Region" },
                          " && echo 'Successfully ran cfn-init'",
                          " || error_exit 'Failed to run cfn-init' > /dev/stderr\n",
+              "      \n",
+              "      # Capture CFn envs in case need to use later...\n",
+              "      echo 'Stow script ENVs for later use...'\n",
+              "      install -b -m 0400 /dev/null /etc/cfn/GitLab.envs\n",
+              "      env | grep GITLAB > /etc/cfn/GitLab.envs\n",
               "      \n",
               "      # Export cert bundle ENVs\n",
               "      export AWS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
@@ -853,11 +866,6 @@
               "      /root/gitlab_instprep.sh || ",
                         "error_exit 'Errors detected while running ",
                         "/root/gitlab_instprep.sh'\n",
-              "      export GITLAB_EXTERNURL=\"",
-                        { "Ref" : "ServerHostname" },
-                        ".",
-                        { "Ref" : "DnsSuffix" },
-                        "\"\n",
               "      curl -skL ",
                         { "Ref": "GitLabConfScript" },
                         " -o /tmp/gitlab_config.sh || ",

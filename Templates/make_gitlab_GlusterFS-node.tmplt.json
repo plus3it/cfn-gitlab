@@ -1,0 +1,471 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "GlusterFS replicated volume CloudFormation template.",
+  "Mappings": {},
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Label": {
+            "default": "Instance Parms"
+          },
+          "Parameters": [
+            "AmiId",
+            "ClusterInstanceType",
+            "ClusterSecurityGroup",
+            "GlusterSubnets",
+            "ShareVolDev",
+            "ShareVolType",
+            "ShareVolSize",
+            "KeyPairName",
+            "GlusNodeName",
+            "GlusNodeNumber",
+            "GlusDomName",
+            "InstanceProfile",
+            "GlusterPartnerIp"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Miscellaneous Settings"
+          },
+          "Parameters": [
+            "ConsumerApplication",
+            "GlusterOsprepScript",
+            "GlusterGfsScript",
+            "CfnEndpointUrl",
+            "EpelRepo",
+            "PipRpm",
+            "PyStache"
+          ]
+        }
+      ],
+      "ParameterLabels": {
+        "ClusterInstanceType": {
+          "default": "EC2 Instance-type"
+        },
+        "ClusterSecurityGroup": {
+          "default": "EC2 SecurityGroups"
+        },
+        "GlusterSubnets": {
+          "default": "EC2 Subnet"
+        },
+        "GlusNodeName": {
+          "default": "Hostname"
+        },
+        "GlusNodeNumber": {
+          "default": "Hostname-suffix"
+        },
+        "GlusDomName": {
+          "default": "Host DomainName"
+        },
+        "InstanceProfile": {
+          "default": "EC2 InstanceRole Name"
+        },
+        "GlusterPartnerIp": {
+          "default": "Gluster Partner IP-address"
+        },
+        "GlusterOsprepScript": {
+          "default": "OS Prep-Script URL"
+        },
+        "GlusterGfsScript": {
+          "default": "GlusterFS Prep-Script URL"
+        },
+        "ConsumerApplication": {
+          "default": "Hosted Application Name"
+        }
+      }
+    }
+  },
+  "Conditions": {
+    "AssignInstanceRole": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            { "Ref": "InstanceProfile" },
+            ""
+          ]
+        }
+      ]
+    },
+    "CreateShareVol": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            { "Ref": "ShareVolDev" },
+            ""
+          ]
+        }
+      ]
+    }
+  },
+  "Outputs": {
+    "Info": {
+      "Description": "Info",
+      "Value": "Gluster replicated filesystem service"
+    },
+    "GfsNodeIp": {
+      "Description": "Second Gluster node's IP address",
+      "Value": { "Fn::GetAtt": [ "GfsNode", "PrivateIp" ] }
+    }
+  },
+  "Parameters": {
+    "AmiId": {
+      "AllowedPattern": "^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$",
+      "Description": "ID of the AMI to launch",
+      "Type": "String"
+    },
+    "CfnEndpointUrl": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Default": "",
+      "Description": "URL to the CloudFormation Endpoint. e.g. https://cloudformation.us-east-1.amazonaws.com",
+      "Type": "String"
+    },
+    "ClusterInstanceType": {
+      "AllowedValues": [
+        "t2.micro",
+        "t2.small",
+        "t2.medium",
+        "t2.large",
+        "t2.xlarge",
+        "t2.2xlarge",
+        "m3.medium",
+        "m3.large",
+        "m3.xlarge",
+        "m3.2xlarge",
+        "m4.large",
+        "m4.xlarge",
+        "m4.2xlarge",
+        "m4.4xlarge",
+        "m4.10xlarge",
+        "m4.16xlarge"
+      ],
+      "Default": "t2.large",
+      "Description": "Amazon Linux AMI instance type: https://aws.amazon.com/ec2/instance-types/",
+      "Type": "String"
+    },
+    "ClusterSecurityGroup": {
+      "AllowedPattern": "^sg-[0-9a-z]{8}$|^sg-[0-9a-z]{17}$",
+      "Description": "Security group to assign to the Gluster cluster",
+      "Type": "List<AWS::EC2::SecurityGroup::Id>"
+    },
+    "ConsumerApplication": {
+      "Description": "Name of the application that the cluster is hosting data for.",
+      "Type": "String"
+    },
+    "EpelRepo": {
+      "AllowedPattern": "^[a-z][a-z0-9-]*$",
+      "ConstraintDescription": "An alphanumeric string that represents the EPEL yum repo's label.",
+      "Default": "epel",
+      "Description": "Name of network's EPEL repo.",
+      "Type": "String"
+    },
+    "GlusDomName": {
+      "Description": "FQDN to be added to the Gluster node-name.",
+      "Type": "String"
+    },
+    "GlusterGfsScript": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to script that configures a Gluster filesystem.",
+      "Type": "String"
+    },
+    "GlusNodeName": {
+      "Description": "Node-name to assign to the Gluster host.",
+      "Type": "String"
+    },
+    "GlusNodeNumber": {
+      "Description": "Node-ID to assign to the Gluster host.",
+      "Type": "String"
+    },
+    "GlusterPartnerIp": {
+      "Description": "IP address of Gluster partner-node (dotted-quad format).",
+      "Type": "String"
+    },
+    "GlusterOsprepScript": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to script that prepares the EC2 instance's host OS for hosting a Gluster filesystem.",
+      "Type": "String"
+    },
+    "GlusterSubnets": {
+      "Description": "List of subnets to deploy Gluster instances into.",
+      "Type": "AWS::EC2::Subnet::Id"
+    },
+    "InstanceProfile": {
+      "Description": "IAM instance profile to apply to the instance(s)",
+      "Type": "String"
+    },
+    "KeyPairName": {
+      "ConstraintDescription": "Name can contain only ASCII characters.",
+      "Description": "Name of an existing EC2 KeyPair: https://console.aws.amazon.com/ec2/v2/home#KeyPairs:",
+      "Type": "AWS::EC2::KeyPair::KeyName"
+    },
+    "PyStache": {
+      "Default": "pystache",
+      "Description": "Name of preferred pystache RPM.",
+      "Type": "String"
+    },
+    "PipRpm": {
+      "Default": "python2-pip",
+      "Description": "Name of preferred pip RPM.",
+      "Type": "String"
+    },
+    "ShareVolDev": {
+      "AllowedValues": [
+      "/dev/xvdf",
+      "/dev/xvdg",
+      "/dev/xvdh",
+      "/dev/xvdi",
+      "/dev/xvdj"
+      ],
+      "Default": "/dev/xvdf",
+      "Description": "Device to mount as Gluster's shared-storage",
+      "Type": "String"
+    },
+    "ShareVolSize": {
+      "ConstraintDescription": "Must be between 1GB and 16384GB.",
+      "Default": "20",
+      "Description": "Size in GB of the EBS volume to create.",
+      "MaxValue": "16384",
+      "MinValue": "20",
+      "Type": "Number"
+    },
+    "ShareVolType": {
+      "AllowedValues": [
+      "gp2",
+      "io1",
+      "sc1",
+      "st1",
+      "standard"
+      ],
+      "Default": "gp2",
+      "Description": "Type of EBS volume to create for shared storage.",
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "GfsNode": {
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Count": "1",
+          "Timeout": "PT15M"
+        }
+      },
+      "Metadata": {
+        "AWS::CloudFormation::Init": {
+          "config": {
+            "files": {
+              "/etc/cfn/cfn-hup.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[main]\n",
+                      "stack=",
+                      { "Ref": "AWS::StackId" },
+                      "\n",
+                      "region=",
+                      { "Ref": "AWS::Region" },
+                      "\n",
+                      {
+                        "Fn::If": [
+                          "AssignInstanceRole",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                "role=",
+                                { "Ref": "InstanceProfile" },
+                                "\n"
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      {
+                        "Fn::If": [
+                          "AssignInstanceRole",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                "url=",
+                                { "Ref": "CfnEndpointUrl" },
+                                "\n"
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      }
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000400",
+                "owner": "root"
+              }
+            },
+            "services": {
+              "sysvinit": {
+                "cfn-hup": {
+                  "enabled": "true",
+                  "ensureRunning": "true",
+                  "files": [
+                    "/etc/cfn/cfn-hup.conf"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "Properties": {
+        "BlockDeviceMappings": [
+          {
+            "DeviceName": "/dev/xvda",
+            "Ebs": {
+              "VolumeSize": "20",
+              "VolumeType": "gp2"
+            }
+          },
+          {
+            "Fn::If": [
+            "CreateShareVol",
+            {
+              "DeviceName": { "Ref": "ShareVolDev" },
+              "Ebs": {
+              "DeleteOnTermination": "true",
+              "VolumeSize": { "Ref": "ShareVolSize" },
+              "VolumeType": { "Ref": "ShareVolType" }
+              }
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+            ]
+          }
+        ],
+        "ImageId": { "Ref": "AmiId" },
+        "InstanceType": { "Ref": "ClusterInstanceType" },
+        "KeyName": { "Ref": "KeyPairName" },
+        "SecurityGroupIds": { "Ref": "ClusterSecurityGroup" },
+        "SubnetId": { "Ref": "GlusterSubnets" },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  { "Ref": "ConsumerApplication" },
+                  " ",
+                  "GlusterFS Server (Node ",
+                  { "Ref": "GlusNodeNumber"},
+                  ")"
+                ]
+              ]
+            }
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#cloud-config\n",
+                "\n",
+                "hostname: ",
+                  { "Ref": "GlusNodeName"},
+                  "-",
+                  { "Ref": "GlusNodeNumber"},
+                  "\n",
+                "fqdn: ",
+                  { "Ref": "GlusNodeName"},
+                  "-",
+                  { "Ref": "GlusNodeNumber"},
+                  ".",
+                  { "Ref": "GlusDomName" },
+                  "\n",
+                "\n",
+                "runcmd:\n",
+                "  - |-\n",
+                "      # Helper function\n",
+                "      function err_exit {\n",
+                "         echo \"${1}\"\n",
+                "         logger -p kern.crit -t UserData \"${1}\"\n",
+                "         /opt/aws/bin/cfn-signal -e 1 --stack ",
+                          { "Ref": "AWS::StackName" },
+                          " --resource GfsNode\n",
+                "         exit 1\n",
+                "      }\n",
+                "      \n",
+                "      # Install RPMs needed by the cfn-tools.\n",
+                "      yum --enablerepo=",
+                       { "Ref": "EpelRepo" },
+                       " install -y ",
+                       { "Ref": "PyStache" },
+                       " ",
+                       { "Ref": "PipRpm" },
+                       " || err_exit 'Could not install Cfn dependencies.'\n",
+                "      \n",
+                "      # Initialize the Cfn subsystems\n",
+                "      /opt/aws/bin/cfn-init -s ",
+                       { "Ref": "AWS::StackName" },
+                       " -r GfsNode ",
+                       " --region ",
+                       { "Ref": "AWS::Region" },
+                       " && echo 'Successfully ran cfn-init'",
+                       " || err_exit 'Failed to run cfn-init' > /dev/stderr\n",
+                "      \n",
+                "      # Export cert bundle ENVs\n",
+                "      export AWS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
+                "      export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
+                "      \n",
+                "      export GLUSTER_DEVICE=\"",
+                       { "Ref": "ShareVolDev" },
+                       "\"\n",
+                "      export GLUSTER_CFN_RESOURCE_NAME=\"GfsNode\"\n",
+                "      export GLUSTER_PARTNER_IP=\"",
+                       { "Ref": "GlusterPartnerIp" },
+                       "\"\n",
+                "      export GLUSTER_CFN_STACK_NAME=\"",
+                       { "Ref": "AWS::StackName" },
+                       "\"\n",
+                "      export GLUSTER_CFN_ENDPOINT=\"",
+                       { "Ref": "CfnEndpointUrl" },
+                       "\"\n",
+                "      env | grep ^GLUSTER_ > /etc/cfn/gluster.cfn_envs\n",
+                "      \n",
+                "      \n",
+                "      # Get the config scripts\n",
+                "      curl -skL ",
+                       { "Ref": "GlusterGfsScript" },
+                       " -o /root/GlusterConfig.sh\n",
+                "      curl -skL ",
+                       { "Ref": "GlusterOsprepScript" },
+                       " -o /root/OSprep.sh\n",
+                "      \n",
+                "      # Run the config scripts\n",
+                "      bash /root/OSprep.sh /root/GlusterConfig.sh || err_exit",
+                       " 'OSprep exited abnormally'\n",
+                "      if [[ $(  ps -ef | grep -q shutdown )$? -ne 0 ]]\n",
+                "      then\n",
+                "         /opt/aws/bin/cfn-signal -e 0",
+                          " --stack ",
+                          { "Ref" : "AWS::StackName" },
+                          " --resource GfsNode",
+                          " --region ",
+                          { "Ref" : "AWS::Region"},
+                          "\n",
+                "      fi\n",
+                "\n"
+              ]
+            ]
+          }
+        }
+      },
+      "Type": "AWS::EC2::Instance"
+    }
+  }
+}

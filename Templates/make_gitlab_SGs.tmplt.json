@@ -1,0 +1,106 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Template for creating Security groups used to support Atlassian's GitLab.",
+  "Mappings": {},
+  "Conditions": {},
+  "Outputs": {
+    "AppSg": {
+      "Description": "Application-access Security Group",
+      "Value": { "Ref": "AppSg" }
+    },
+    "NasSg": {
+      "Description": "EC2-to-NAS Security Group",
+      "Value": { "Ref": "NasSg" }
+    },
+    "RdsSg": {
+      "Description": "EC2-to-RDS Security Group",
+      "Value": { "Ref": "RdsSg" }
+    }
+  },
+  "Parameters": {
+    "TargetVPC": {
+      "AllowedPattern": "^vpc-[0-9a-f]*$",
+      "Description": "ID of the VPC to deploy GitLab components into.",
+      "Type": "AWS::EC2::VPC::Id"
+    }
+  },
+  "Resources": {
+    "RdsSg": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "EC2-to-RDS Security Group",
+        "Tags": [ { "Key": "Name", "Value": "GitLab EC2/RDS Security Group" } ],
+        "VpcId": { "Ref": "TargetVPC" }
+      }
+    },
+    "UpdateRdsSg": {
+      "DependsOn": "RdsSg",
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": { "Ref": "RdsSg" },
+        "SourceSecurityGroupId": { "Ref": "RdsSg" },
+        "IpProtocol": "tcp",
+        "FromPort": "5432",
+        "ToPort": "5432"
+      }
+    },
+    "NasSg": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "EC2-to-Storage Security Group",
+        "Tags": [ { "Key": "Name", "Value": "GitLab EC2/Storage Security Group" } ],
+        "VpcId": { "Ref": "TargetVPC" }
+      }
+    },
+    "UpdateNasSg": {
+      "DependsOn": "NasSg",
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": { "Ref": "NasSg" },
+        "SourceSecurityGroupId": { "Ref": "NasSg" },
+        "IpProtocol": "tcp",
+        "FromPort": "0",
+        "ToPort": "65535"
+      }
+    },
+    "AppSg": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Application access-ports Security Group",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": "0.0.0.0/0"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "80",
+            "ToPort": "80",
+            "CidrIp": "0.0.0.0/0"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "443",
+            "ToPort": "443",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "Tags": [ { "Key": "Name", "Value": "GitLab application Security Group" } ],
+        "VpcId": { "Ref": "TargetVPC" }
+      }
+    },
+    "UpdateAppSg": {
+      "DependsOn": "AppSg",
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": { "Ref": "AppSg" },
+        "SourceSecurityGroupId": { "Ref": "AppSg" },
+        "IpProtocol": "tcp",
+        "FromPort": "0",
+        "ToPort": "65535"
+      }
+    }
+  }
+}

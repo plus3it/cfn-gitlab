@@ -1,0 +1,594 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "This template coordinates the running of the GitLab SecurityGroup, S3 and IAM templates.",
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Label": {
+            "default": "Stack Bucket Objects"
+          },
+          "Parameters": [
+            "GitlabBucket"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Stack child-templates"
+          },
+          "Parameters": [
+            "GitlabBucketTemplate",
+            "GitlabIamTemplate",
+            "SecurityGroupTemplate"
+          ]
+        }
+      ]
+    }
+  },
+  "Parameters": {
+    "AdminPubkeyURL": {
+      "Description": "URL the file containing the admin users' SSH public keys.",
+      "Type": "String",
+      "AllowedPattern": "^$|^http://.*$|^https://.*$"
+    },
+    "AmiId": {
+      "Description": "ID of the AMI to launch",
+      "Type": "String",
+      "AllowedPattern": "^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"
+    },
+    "AppVolumeDevice": {
+      "Description": "Device to mount an extra EBS volume. Leave blank to launch without an extra application volume",
+      "Type": "String",
+      "Default": "",
+      "AllowedValues": [
+        "",
+        "/dev/xvdf",
+        "/dev/xvdg",
+        "/dev/xvdh",
+        "/dev/xvdi",
+        "/dev/xvdj"
+      ]
+    },
+    "AppVolumeMountPath": {
+      "Description": "Filesystem path to mount the extra app volume. Ignored if \"AppVolumeDevice\" is blank",
+      "Type": "String",
+      "Default": "/opt/gitlab",
+      "AllowedPattern": "/.*"
+    },
+    "AppVolumeSize": {
+      "Description": "Size in GB of the EBS volume to create. Ignored if \"AppVolumeDevice\" is blank",
+      "Type": "Number",
+      "Default": "10",
+      "MinValue": "5",
+      "MaxValue": "16384",
+      "ConstraintDescription": "Must be between 5GB and 16384GB."
+    },
+    "AppVolumeType": {
+      "Description": "Type of EBS volume to create. Ignored if \"AppVolumeDevice\" is blank",
+      "Type": "String",
+      "Default": "gp2",
+      "AllowedValues": [
+        "gp2",
+        "io1",
+        "sc1",
+        "st1",
+        "standard"
+      ]
+    },
+    "AwsRegionTld": {
+      "Default": "amazonaws.com",
+      "Description": "TLD of the Amazon region",
+      "Type": "String"
+    },
+    "BackupCronURL": {
+      "Description": "URL to the GitLab backup cron-file",
+      "Type": "String",
+      "AllowedPattern": "^$|^http://.*$|^https://.*$"
+    },
+    "BackupFolder": {
+      "Description": "Folder in S3 Bucket to host backups of GitLab config-data",
+      "Type": "String"
+    },
+    "CfnEndpointUrl": {
+      "Description": "URL to the CloudFormation Endpoint. e.g. https://cloudformation.us-east-1.amazonaws.com",
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^$|^http://.*$|^https://.*$"
+    },
+    "DbAdminName": {
+      "Description": "Name of the GitLab master database-user.",
+      "Type": "String"
+    },
+    "DbAdminPass": {
+      "Description": "Password of the GitLab master database-user.",
+      "Type": "String"
+    },
+    "DbDataSize": {
+      "ConstraintDescription": "Must be between 5GB and 16384GB.",
+      "Default": "5",
+      "Description": "Size in GiB of the RDS table-space to create.",
+      "MaxValue": "16384",
+      "MinValue": "5",
+      "Type": "Number"
+    },
+    "DbInstanceName": {
+      "Description": "Instance-name of the GitLab database.",
+      "Type": "String"
+    },
+    "DbInstanceType": {
+      "AllowedValues": [
+        "db.t2.micro",
+        "db.t2.small",
+        "db.t2.medium",
+        "db.t2.large",
+        "db.m3.medium",
+        "db.m3.large",
+        "db.m3.xlarge",
+        "db.m3.2xlarge",
+        "db.m4.large",
+        "db.m4.xlarge",
+        "db.m4.2xlarge",
+        "db.m4.4xlarge",
+        "db.m4.10xlarge",
+        "db.r3.large",
+        "db.r3.xlarge",
+        "db.r3.2xlarge",
+        "db.r3.4xlarge",
+        "db.r3.8xlarge"
+      ],
+      "Default": "db.t2.small",
+      "Description": "Amazon RDS instance type",
+      "Type": "String"
+    },
+    "DbNodeName": {
+      "Description": "NodeName of the GitLab database.",
+      "Type": "String"
+    },
+    "DbSubnets": {
+      "Description": "Select three subnets - each from different Availability Zones.",
+      "Type": "List<AWS::EC2::Subnet::Id>"
+    },
+    "DnsSuffix": {
+      "Description" : "Suffix for GitLab's hostname and DNS record",
+      "Type": "String",
+      "ConstraintDescription": "An alphanumeric string to complete the domain portion of the instance's FQDN."
+    },
+    "EfsSubnet": {
+      "Description": "Select three subnets - each from different Availability Zones.",
+      "Type": "List<AWS::EC2::Subnet::Id>"
+    },
+    "EpelRepo": {
+      "Description" : "Name of network's EPEL repo.",
+      "Type": "String",
+      "Default": "epel",
+      "AllowedPattern": "^[a-z][a-z0-9-]*$",
+      "ConstraintDescription": "An alphanumeric string that represents the EPEL yum repo's label."
+    },
+    "GitLabConfScript": {
+      "Description": "URL of the script that localizes GitLab for running in the target environment",
+      "Type": "String",
+      "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$"
+    },
+    "GitlabEc2Template": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the GitLab EC2 instance.",
+      "Type": "String"
+    },
+    "GitLabPrepScript": {
+      "Description": "URL of the script that preps the OS to host GitLab",
+      "Type": "String",
+      "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$"
+    },
+    "GitRepoShareType": {
+      "AllowedValues": [
+        "glusterfs",
+        "nfs"
+      ],
+      "Description": "Type of network share hosting persisted git repository content.",
+      "Type": "String"
+    },
+    "GitRepoShareFsPath": {
+      "Description": "URI of network share hosting persisted git repository content.",
+      "Type": "String"
+    },
+    "GitlabBucket": {
+      "AllowedPattern": "^[a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9]*$|^$",
+      "Description": "S3 Bucket to host GitLab files",
+      "Type": "String"
+    },
+    "GitlabBucketTemplate": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the gitlab-bucket.",
+      "Type": "String"
+    },
+    "GitlabEfsTemplate": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the GitLab EFS service.",
+      "Type": "String"
+    },
+    "GitlabIamTemplate": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the GitLab S3 bucket(s) IAM roles.",
+      "Type": "String"
+    },
+    "GitlabRdsTemplate": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the GitLab RDS service.",
+      "Type": "String"
+    },
+    "InstanceType": {
+      "Description": "Amazon EC2 instance type",
+      "Type": "String",
+      "Default": "t2.micro",
+      "AllowedValues": [
+        "t2.micro",
+        "t2.small",
+        "t2.medium",
+        "t2.large",
+        "c4.large",
+        "c4.xlarge",
+        "m3.xlarge",
+        "m4.large",
+        "m4.xlarge",
+        "m4.2xlarge",
+        "r3.2xlarge"
+      ]
+    },
+    "KeyPairName": {
+      "Description": "Public/private key pairs allow you to securely connect to your instance after it launches",
+      "Type": "AWS::EC2::KeyPair::KeyName"
+    },
+    "LdapCrypt": {
+      "Description": "Encryption-method to use for securing the LDAP connection (\"plain\" is BASE64-encoded).",
+      "Type": "String",
+      "Default": "plain",
+      "AllowedValues": [
+        "plain",
+        "ssl",
+        "tls"
+      ]
+    },
+    "LdapHost": {
+      "Description": "FQDN of the LDAP host/Active Directory server.",
+      "Type": "String",
+      "AllowedPattern": "^[a-z0-9.-]*$"
+    },
+    "LdapPort": {
+      "Description": "TCP Port that the LDAP/AD service listens on.",
+      "Type": "String",
+      "Default": "389",
+      "AllowedPattern": "^[0-9]*$"
+    },
+    "LdapProxyUser": {
+      "Description": "Name of the user that has directory-lookup privileges on the target directory service. Use DN or UPN format.",
+      "Type": "String"
+    },
+    "LdapSearchBase": {
+      "Description": "DN of the LDAP search-scope.",
+      "Type": "String"
+    },
+    "LdapUserPassword": {
+      "Description": "Password of the user that has directory-lookup privileges on the target directory service.",
+      "Type": "String"
+    },
+    "NoPublicIp": {
+      "Description": "Controls whether to assign the instance a public IP. Recommended to leave at \"true\" _unless_ launching in a public subnet",
+      "Type": "String",
+      "Default": "true",
+      "AllowedValues": [
+        "false",
+        "true"
+      ]
+    },
+    "NoReboot": {
+      "Description": "Controls whether to reboot the instance as the last step of cfn-init execution",
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": [
+        "false",
+        "true"
+      ]
+    },
+    "PgsqlVersion": {
+      "AllowedValues": [
+        "9.6.3",
+        "9.6.2",
+        "9.6.1",
+        "9.5.7",
+        "9.5.6",
+        "9.5.4",
+        "9.5.2"
+      ],
+      "Default": "9.6.3",
+      "Description": "The X.Y.Z version of the PostGreSQL database to deploy.",
+      "Type": "String"
+    },
+    "PipIndexFips": {
+      "Description" : "URL of pip index  that is compatible with FIPS 140-2 requirements.",
+      "Type": "String",
+      "Default": "https://pypi.org/simple/",
+      "AllowedPattern": "^$|^http://.*$|^https://.*$"
+    },
+    "PipRpm": {
+      "Description" : "Name of preferred pip RPM.",
+      "Type": "String",
+      "Default": "python2-pip"
+    },
+    "ProvisionUser": {
+      "Description": "Default login user account name.",
+      "Type": "String",
+      "Default": "autogitlab",
+      "AllowedPattern": "[a-z0-9]{6,12}+",
+      "ConstraintDescription": "Alphanumeric string between 6 and 12 characters."
+    },
+    "ProxyName": {
+      "Description" : "FQDN of public-facing reverse-proxy.",
+      "Type": "String",
+      "AllowedPattern": "^[a-z][a-z0-9.-]*[a-z]$",
+      "ConstraintDescription": "Alphanumeric string DNS FQDN representing the RDS end-point name."
+    },
+    "PyStache": {
+      "Description" : "Name of preferred pystache RPM.",
+      "Type": "String",
+      "Default": "pystache"
+    },
+    "SecurityGroupTemplate": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the GitLab SecurityGroups.",
+      "Type": "String"
+    },
+    "ServerHostname": {
+      "Description" : "Node-name for GitLab's hostname and DNS record",
+      "Type": "String",
+      "Default": "gitlab",
+      "ConstraintDescription": "An alphanumeric string to complete the hostname portion of the instance's FQDN."
+    },
+    "SmtpAuthSender": {
+      "Description" : "Authorized SMTP-relay sender ID.",
+      "Type": "String"
+    },
+    "SmtpMessageDomain": {
+      "Description" : "@DOMAIN value for notification mails.",
+      "Type": "String"
+    },
+    "SmtpNoticeUser": {
+      "Description" : "User to set in outbound messages \"From:\" address.",
+      "Type": "String"
+    },
+    "SmtpRelayFqdn": {
+      "Description" : "FQDN of the SMTP-relay host.",
+      "Type": "String"
+    },
+    "SmtpRelayPort": {
+      "AllowedValues": [
+        "25",
+        "465",
+        "587"
+        ],
+      "Default": "465",
+      "Description" : "Listener-port of the SMTP-relay host.",
+      "Type": "String"
+    },
+    "SmtpSenderPass": {
+      "Description" : "Password or the authorized SMTP-relay sender ID.",
+      "Type": "String"
+    },
+    "SubNetId": {
+      "Description": "Subnet to associate to the Instance",
+      "Type": "AWS::EC2::Subnet::Id"
+    },
+    "TargetVPC": {
+      "AllowedPattern": "^vpc-[0-9a-f]*$",
+      "Description": "ID of the VPC to deploy GitLab components into.",
+      "Type": "AWS::EC2::VPC::Id"
+    }
+  },
+  "Resources": {
+    "Ec2Res": {
+      "Properties": {
+        "Parameters": {
+          "AdminPubkeyURL": { "Ref": "AdminPubkeyURL" },
+          "AmiId": { "Ref": "AmiId" },
+          "AppVolumeDevice": { "Ref": "AppVolumeDevice" },
+          "AppVolumeMountPath": { "Ref": "AppVolumeMountPath" },
+          "AppVolumeSize": { "Ref": "AppVolumeSize" },
+          "AppVolumeType": { "Ref": "AppVolumeType" },
+          "BackupBucket": {
+            "Fn::GetAtt": [ "S3Res", "Outputs.GitlabBucketArn" ]
+          },
+          "BackupCronURL": { "Ref": "BackupCronURL" },
+          "BackupFolder": { "Ref": "BackupFolder" },
+          "CfnEndpointUrl": { "Ref": "CfnEndpointUrl" },
+          "DnsSuffix": { "Ref": "DnsSuffix" },
+          "EpelRepo": { "Ref": "EpelRepo" },
+          "GitLabConfScript": { "Ref": "GitLabConfScript" },
+          "GitLabPrepScript": { "Ref": "GitLabPrepScript" },
+          "GitRepoShareType": { "Ref": "GitRepoShareType" },
+          "GitRepoShareUri": {
+            "Fn::Join": [
+              "",
+              [
+                { "Fn::GetAtt": [ "EfsRes", "Outputs.EfsId" ] },
+                ".efs.",
+                { "Ref" : "AWS::Region" },
+                ".",
+                { "Ref": "AwsRegionTld" },
+                ":",
+                { "Ref": "GitRepoShareFsPath" }
+              ]
+            ]
+          },
+          "InstanceRole": {
+            "Fn::GetAtt": [ "IamRes", "Outputs.InstanceRoleProfile" ]
+          },
+          "InstanceType": { "Ref": "InstanceType" },
+          "KeyPairName": { "Ref": "KeyPairName" },
+          "LdapCrypt": { "Ref": "LdapCrypt" },
+          "LdapHost": { "Ref": "LdapHost" },
+          "LdapPort": { "Ref": "LdapPort" },
+          "LdapProxyUser": { "Ref": "LdapProxyUser" },
+          "LdapSearchBase": { "Ref": "LdapSearchBase" },
+          "LdapUserPassword": { "Ref": "LdapUserPassword" },
+          "NoPublicIp": { "Ref": "NoPublicIp" },
+          "NoReboot": { "Ref": "NoReboot" },
+          "PipIndexFips": { "Ref": "PipIndexFips" },
+          "PipRpm": { "Ref": "PipRpm" },
+          "ProvisionUser": { "Ref": "ProvisionUser" },
+          "ProxyName": { "Ref": "ProxyName" },
+          "PyStache": { "Ref": "PyStache" },
+          "RdsDbAdmin": {
+            "Fn::GetAtt": [ "RdsRes", "Outputs.RdsDbUserName" ]
+          },
+          "RdsDbHost": {
+            "Fn::GetAtt": [ "RdsRes", "Outputs.RdsEndpointAddress" ]
+          },
+          "RdsDbInstance": {
+            "Fn::GetAtt": [ "RdsRes", "Outputs.RdsDbInstanceName" ]
+          },
+          "RdsDbPasswd": {
+            "Fn::GetAtt": [ "RdsRes", "Outputs.RdsDbUserPass" ]
+          },
+          "SecurityGroupIds": {
+            "Fn::Join": [
+              ",",
+              [
+                { "Fn::GetAtt": [ "SgRes", "Outputs.AppSg" ] },
+                { "Fn::GetAtt": [ "SgRes", "Outputs.NasSg" ] },
+                { "Fn::GetAtt": [ "SgRes", "Outputs.RdsSg" ] }
+              ]
+            ]
+          },
+          "ServerHostname": { "Ref": "ServerHostname" },
+          "SmtpAuthSender": { "Ref": "SmtpAuthSender" },
+          "SmtpMessageDomain": { "Ref": "SmtpMessageDomain" },
+          "SmtpNoticeUser": { "Ref": "SmtpNoticeUser" },
+          "SmtpRelayFqdn": { "Ref": "SmtpRelayFqdn" },
+          "SmtpRelayPort": { "Ref": "SmtpRelayPort" },
+          "SmtpSenderPass": { "Ref": "SmtpSenderPass" },
+          "SubNetId": { "Ref": "SubNetId" }
+        },
+        "TemplateURL": { "Ref": "GitlabEc2Template" },
+        "TimeoutInMinutes": "10"
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "EfsRes": {
+      "Properties": {
+        "Parameters": {
+          "EfsSg": {
+            "Fn::GetAtt": [
+              "SgRes",
+              "Outputs.NasSg"
+            ]
+          },
+          "EfsSubnet": {
+            "Fn::Join": [
+              ",",
+              {
+                "Ref": "EfsSubnet"
+              }
+            ]
+          }
+        },
+        "TemplateURL": {
+          "Ref": "GitlabEfsTemplate"
+        },
+        "TimeoutInMinutes": "10"
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "IamRes": {
+      "Properties": {
+        "Parameters": {
+          "GitlabBucketArn": {
+            "Fn::GetAtt": [
+              "S3Res",
+              "Outputs.GitlabBucketArn"
+            ]
+          }
+        },
+        "TemplateURL": {
+          "Ref": "GitlabIamTemplate"
+        },
+        "TimeoutInMinutes": "10"
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "RdsRes": {
+      "Properties": {
+        "Parameters": {
+          "DbAdminName": {
+            "Ref": "DbAdminName"
+          },
+          "DbAdminPass": {
+            "Ref": "DbAdminPass"
+          },
+          "DbDataSize": {
+            "Ref": "DbDataSize"
+          },
+          "DbInstanceName": {
+            "Ref": "DbInstanceName"
+          },
+          "DbInstanceType": {
+            "Ref": "DbInstanceType"
+          },
+          "DbNodeName": {
+            "Ref": "DbNodeName"
+          },
+          "DbSecurityGroup": {
+            "Fn::GetAtt": [
+              "SgRes",
+              "Outputs.RdsSg"
+            ]
+          },
+          "DbSubnets": {
+            "Fn::Join": [
+              ",",
+              {
+                "Ref": "DbSubnets"
+              }
+            ]
+          },
+          "PgsqlVersion": {
+            "Ref": "PgsqlVersion"
+          },
+          "TargetVPC": {
+            "Ref": "TargetVPC"
+          }
+        },
+        "TemplateURL": {
+          "Ref": "GitlabRdsTemplate"
+        }
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "S3Res": {
+      "Properties": {
+        "Parameters": {
+          "GitlabBucket": {
+            "Ref": "GitlabBucket"
+          }
+        },
+        "TemplateURL": {
+          "Ref": "GitlabBucketTemplate"
+        },
+        "TimeoutInMinutes": "10"
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "SgRes": {
+      "Properties": {
+        "Parameters": {
+          "TargetVPC": {
+            "Ref": "TargetVPC"
+          }
+        },
+        "TemplateURL": {
+          "Ref": "SecurityGroupTemplate"
+        },
+        "TimeoutInMinutes": "10"
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    }
+  }
+}

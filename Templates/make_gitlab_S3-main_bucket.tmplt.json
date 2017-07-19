@@ -1,11 +1,21 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
+  "Conditions": {
+    "SetBucketName": {
+      "Fn::Not": [ {
+        "Fn::Equals": [
+          { "Ref": "GitlabBucket" },
+          ""
+        ]
+      } ]
+    }
+  },
   "Description": "This template sets up the S3 Bucket used by an GitLab instance.",
   "Parameters": {
     "GitlabBucket": {
       "Description": "S3 Bucket to host GitLab content.",
       "Type": "String",
-      "AllowedPattern": "^[a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9]*$"
+      "AllowedPattern": "^[a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9]*$|^$"
     }
   },
   "Resources": {
@@ -13,14 +23,24 @@
       "Type": "AWS::S3::Bucket",
       "Properties": {
         "AccessControl": "BucketOwnerFullControl",
-        "BucketName": { "Ref" : "GitlabBucket" }
+        "BucketName": {
+          "Fn::If": [
+            "SetBucketName",
+            { "Ref" : "GitlabBucket" },
+            { "Ref" : "AWS::NoValue" }
+          ]
+        }
       }
     }
   },
   "Outputs": {
     "GitlabBucketName": {
       "Value": { "Ref": "GitlabS3Bucket" },
-      "Description": "Artifactory artifact S3 Bucket Name"
+      "Description": "Gitlab S3 Bucket Name."
+    },
+    "GitlabBucketArn": {
+      "Value": { "Fn::GetAtt": [ "GitlabS3Bucket", "Arn" ] },
+      "Description": "Gitlab S3 Bucket ARN."
     }
   }
 }

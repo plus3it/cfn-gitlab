@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # shellcheck disable=SC2015
 #
 # Script to handle preparation of the instance for installing

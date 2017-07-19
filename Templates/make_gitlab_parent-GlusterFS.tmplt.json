@@ -1,0 +1,907 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "This template coordinates the running of the GitLab SecurityGroup, S3 and IAM templates.",
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Label": {
+            "default": "Stack child-templates"
+          },
+          "Parameters": [
+            "SecurityGroupTemplate",
+            "GitlabBucketTemplate",
+            "GitlabIamTemplate",
+            "GitlabRdsTemplate",
+            "GitlabEc2Template",
+            "GlusNodeTemplate"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Shared Params"
+          },
+          "Parameters": [
+            "DnsSuffix",
+            "KeyPairName",
+            "TargetVPC",
+            "ClusterableSvcSubnets",
+            "NoPublicIp",
+            "GitlabBucket",
+            "CfnEndpointUrl",
+            "EpelRepo",
+            "PipIndexFips",
+            "PipRpm",
+            "PyStache"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Gitlab EC2 Instance Params"
+          },
+          "Parameters": [
+            "ServerHostname",
+            "AmiId",
+            "InstanceType",
+            "SubNetId",
+            "AppVolumeMountPath",
+            "AppVolumeSize",
+            "ProvisionUser",
+            "AdminPubkeyURL"
+          ]
+        },
+        {
+          "Label": {
+            "default": "RDS Params"
+          },
+          "Parameters": [
+            "DbNodeName",
+            "DbInstanceName",
+            "DbAdminName",
+            "DbAdminPass",
+            "DbInstanceType",
+            "DbDataSize",
+            "PgsqlVersion"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Gluster Nodes' Params"
+          },
+          "Parameters": [
+            "GlusNodeName",
+            "ClusterInstanceType",
+            "ShareVolSize",
+            "GitRepoShareFsPath",
+            "GlusterGfsScript",
+            "GlusterOsprepScript"
+          ]
+        },
+        {
+          "Label": {
+            "default": "GitLab Installation Params"
+          },
+          "Parameters": [
+            "ProxyName",
+            "GitLabPrepScript",
+            "GitLabConfScript",
+            "BackupFolder",
+            "BackupCronURL",
+            "LdapHost",
+            "LdapPort",
+            "LdapCrypt",
+            "LdapProxyUser",
+            "LdapUserPassword",
+            "LdapSearchBase",
+            "SmtpRelayFqdn",
+            "SmtpRelayPort",
+            "SmtpAuthSender",
+            "SmtpSenderPass",
+            "SmtpMessageDomain",
+            "SmtpNoticeUser"
+          ]
+        }
+      ]
+    }
+  },
+  "Parameters": {
+    "AdminPubkeyURL": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL the file containing the admin users' SSH public keys.",
+      "Type": "String"
+    },
+    "AmiId": {
+      "AllowedPattern": "^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$",
+      "Description": "ID of the AMI to launch",
+      "Type": "String"
+    },
+    "AppVolumeMountPath": {
+      "AllowedPattern": "/.*",
+      "Default": "/opt/gitlab",
+      "Description": "Filesystem path to mount the extra app volume. Ignored if \"AppVolumeDevice\" is blank",
+      "Type": "String"
+    },
+    "AppVolumeSize": {
+      "ConstraintDescription": "Must be between 5GB and 16384GB.",
+      "Default": "10",
+      "Description": "Size in GB of the EBS volume to create. Ignored if \"AppVolumeDevice\" is blank",
+      "MaxValue": "16384",
+      "MinValue": "5",
+      "Type": "Number"
+    },
+    "BackupCronURL": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the GitLab backup cron-file",
+      "Type": "String"
+    },
+    "BackupFolder": {
+      "Description": "Folder in S3 Bucket to host backups of GitLab config-data",
+      "Type": "String"
+    },
+    "CfnEndpointUrl": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Default": "",
+      "Description": "URL to the CloudFormation Endpoint. e.g. https://cloudformation.us-east-1.amazonaws.com",
+      "Type": "String"
+    },
+    "ClusterInstanceType": {
+      "AllowedValues": [
+        "t2.micro",
+        "t2.small",
+        "t2.medium",
+        "t2.large",
+        "c4.large",
+        "c4.xlarge",
+        "m3.xlarge",
+        "m4.large",
+        "m4.xlarge",
+        "m4.2xlarge",
+        "r3.2xlarge"
+      ],
+      "Default": "t2.micro",
+      "Description": "Amazon EC2 instance type",
+      "Type": "String"
+    },
+    "ClusterableSvcSubnets": {
+      "Description": "Select three subnets - each from different Availability Zones.",
+      "Type": "List<AWS::EC2::Subnet::Id>"
+    },
+    "DbAdminName": {
+      "Description": "Name of the GitLab master database-user.",
+      "Type": "String"
+    },
+    "DbAdminPass": {
+      "Description": "Password of the GitLab master database-user.",
+      "Type": "String"
+    },
+    "DbDataSize": {
+      "ConstraintDescription": "Must be between 5GB and 16384GB.",
+      "Default": "5",
+      "Description": "Size in GiB of the RDS table-space to create.",
+      "MaxValue": "16384",
+      "MinValue": "5",
+      "Type": "Number"
+    },
+    "DbInstanceName": {
+      "Description": "Instance-name of the GitLab database.",
+      "Type": "String"
+    },
+    "DbInstanceType": {
+      "AllowedValues": [
+        "db.t2.micro",
+        "db.t2.small",
+        "db.t2.medium",
+        "db.t2.large",
+        "db.m3.medium",
+        "db.m3.large",
+        "db.m3.xlarge",
+        "db.m3.2xlarge",
+        "db.m4.large",
+        "db.m4.xlarge",
+        "db.m4.2xlarge",
+        "db.m4.4xlarge",
+        "db.m4.10xlarge",
+        "db.r3.large",
+        "db.r3.xlarge",
+        "db.r3.2xlarge",
+        "db.r3.4xlarge",
+        "db.r3.8xlarge"
+      ],
+      "Default": "db.t2.small",
+      "Description": "Amazon RDS instance type",
+      "Type": "String"
+    },
+    "DbNodeName": {
+      "Description": "NodeName of the GitLab database. (Optional)",
+      "Type": "String"
+    },
+    "DnsSuffix": {
+      "ConstraintDescription": "An alphanumeric string to complete the domain portion of the instance's FQDN.",
+      "Description": "Suffix for GitLab's hostname and DNS record",
+      "Type": "String"
+    },
+    "EpelRepo": {
+      "AllowedPattern": "^[a-z][a-z0-9-]*$",
+      "ConstraintDescription": "An alphanumeric string that represents the EPEL yum repo's label.",
+      "Default": "epel",
+      "Description": "Name of network's EPEL repo.",
+      "Type": "String"
+    },
+    "GitLabConfScript": {
+      "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$",
+      "Description": "URL of the script that localizes GitLab for running in the target environment",
+      "Type": "String"
+    },
+    "GitLabPrepScript": {
+      "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$",
+      "Description": "URL of the script that preps the OS to host GitLab",
+      "Type": "String"
+    },
+    "GitRepoShareFsPath": {
+      "Description": "Volume-path from the shared-volume server.",
+      "Type": "String"
+    },
+    "GitlabBucket": {
+      "AllowedPattern": "^[a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9]*$|^$",
+      "Description": "S3 Bucket to host GitLab files. (Optional)",
+      "Type": "String"
+    },
+    "GitlabBucketTemplate": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the gitlab-bucket.",
+      "Type": "String"
+    },
+    "GitlabEc2Template": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the GitLab EC2 instance.",
+      "Type": "String"
+    },
+    "GitlabIamTemplate": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the GitLab S3 bucket(s) IAM roles.",
+      "Type": "String"
+    },
+    "GitlabRdsTemplate": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the GitLab RDS service.",
+      "Type": "String"
+    },
+    "GlusNodeName": {
+      "Description": "Base node-name to derive individual Gluster node-names.",
+      "Type": "String"
+    },
+    "GlusNodeTemplate": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the gitlab-bucket.",
+      "Type": "String"
+    },
+    "GlusterGfsScript": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to script that configures a Gluster filesystem.",
+      "Type": "String"
+    },
+    "GlusterOsprepScript": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to script that prepares the EC2 instance's host OS for hosting a Gluster filesystem.",
+      "Type": "String"
+    },
+    "InstanceType": {
+      "AllowedValues": [
+        "t2.micro",
+        "t2.small",
+        "t2.medium",
+        "t2.large",
+        "c4.large",
+        "c4.xlarge",
+        "m3.xlarge",
+        "m4.large",
+        "m4.xlarge",
+        "m4.2xlarge",
+        "r3.2xlarge"
+      ],
+      "Default": "t2.micro",
+      "Description": "Amazon EC2 instance type",
+      "Type": "String"
+    },
+    "KeyPairName": {
+      "Description": "Public/private key pairs allow you to securely connect to your service-instances after launch.",
+      "Type": "AWS::EC2::KeyPair::KeyName"
+    },
+    "LdapCrypt": {
+      "AllowedValues": [
+        "plain",
+        "ssl",
+        "tls"
+      ],
+      "Default": "plain",
+      "Description": "Encryption-method to use for securing the LDAP connection (\"plain\" is BASE64-encoded).",
+      "Type": "String"
+    },
+    "LdapHost": {
+      "AllowedPattern": "^[a-z0-9.-]*$",
+      "Description": "FQDN of the LDAP host/Active Directory server.",
+      "Type": "String"
+    },
+    "LdapPort": {
+      "AllowedPattern": "^[0-9]*$",
+      "Default": "389",
+      "Description": "TCP Port that the LDAP/AD service listens on.",
+      "Type": "String"
+    },
+    "LdapProxyUser": {
+      "Description": "Name of the user that has directory-lookup privileges on the target directory service. Use DN or UPN format.",
+      "Type": "String"
+    },
+    "LdapSearchBase": {
+      "Description": "DN of the LDAP search-scope.",
+      "Type": "String"
+    },
+    "LdapUserPassword": {
+      "Description": "Password of the user that has directory-lookup privileges on the target directory service.",
+      "Type": "String"
+    },
+    "NoPublicIp": {
+      "AllowedValues": [
+        "false",
+        "true"
+      ],
+      "Default": "true",
+      "Description": "Controls whether to assign the instance a public IP. Recommended to leave at \"true\" _unless_ launching in a public subnet",
+      "Type": "String"
+    },
+    "PgsqlVersion": {
+      "AllowedValues": [
+        "9.6.3",
+        "9.6.2",
+        "9.6.1",
+        "9.5.7",
+        "9.5.6",
+        "9.5.4",
+        "9.5.2"
+      ],
+      "Default": "9.6.3",
+      "Description": "The X.Y.Z version of the PostGreSQL database to deploy.",
+      "Type": "String"
+    },
+    "PipIndexFips": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Default": "https://pypi.org/simple/",
+      "Description": "URL of pip index  that is compatible with FIPS 140-2 requirements.",
+      "Type": "String"
+    },
+    "PipRpm": {
+      "Default": "python2-pip",
+      "Description": "Name of preferred pip RPM.",
+      "Type": "String"
+    },
+    "ProvisionUser": {
+      "AllowedPattern": "[a-z0-9]{6,12}+",
+      "ConstraintDescription": "Alphanumeric string between 6 and 12 characters.",
+      "Default": "autogitlab",
+      "Description": "Default login user account name.",
+      "Type": "String"
+    },
+    "ProxyName": {
+      "AllowedPattern": "^[a-z][a-z0-9.-]*[a-z]$",
+      "ConstraintDescription": "Alphanumeric string DNS FQDN representing the RDS end-point name.",
+      "Description": "FQDN of public-facing reverse-proxy.",
+      "Type": "String"
+    },
+    "PyStache": {
+      "Default": "pystache",
+      "Description": "Name of preferred pystache RPM.",
+      "Type": "String"
+    },
+    "SecurityGroupTemplate": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the GitLab SecurityGroups.",
+      "Type": "String"
+    },
+    "ServerHostname": {
+      "ConstraintDescription": "An alphanumeric string to complete the hostname portion of the instance's FQDN.",
+      "Default": "gitlab",
+      "Description": "Node-name for GitLab's hostname and DNS record",
+      "Type": "String"
+    },
+    "ShareVolSize": {
+      "ConstraintDescription": "Must be between 1GB and 16384GB.",
+      "Default": "20",
+      "Description": "Size in GB of the EBS volume to create.",
+      "MaxValue": "16384",
+      "MinValue": "20",
+      "Type": "Number"
+    },
+    "SmtpAuthSender": {
+      "Description": "Authorized SMTP-relay sender ID.",
+      "Type": "String"
+    },
+    "SmtpMessageDomain": {
+      "Description": "@DOMAIN value for notification mails.",
+      "Type": "String"
+    },
+    "SmtpNoticeUser": {
+      "Description": "User to set in outbound messages \"From:\" address.",
+      "Type": "String"
+    },
+    "SmtpRelayFqdn": {
+      "Description": "FQDN of the SMTP-relay host.",
+      "Type": "String"
+    },
+    "SmtpRelayPort": {
+      "AllowedValues": [
+        "25",
+        "465",
+        "587"
+      ],
+      "Default": "465",
+      "Description": "Listener-port of the SMTP-relay host.",
+      "Type": "String"
+    },
+    "SmtpSenderPass": {
+      "Description": "Password or the authorized SMTP-relay sender ID.",
+      "Type": "String"
+    },
+    "SubNetId": {
+      "Description": "Subnet to associate to the Instance",
+      "Type": "AWS::EC2::Subnet::Id"
+    },
+    "TargetVPC": {
+      "AllowedPattern": "^vpc-[0-9a-f]*$",
+      "Description": "ID of the VPC to deploy GitLab components into.",
+      "Type": "AWS::EC2::VPC::Id"
+    }
+  },
+  "Resources": {
+    "Ec2Res": {
+      "Properties": {
+        "Parameters": {
+          "AdminPubkeyURL": {
+            "Ref": "AdminPubkeyURL"
+          },
+          "AmiId": {
+            "Ref": "AmiId"
+          },
+          "AppVolumeDevice": "/dev/xvdf",
+          "AppVolumeMountPath": {
+            "Ref": "AppVolumeMountPath"
+          },
+          "AppVolumeSize": {
+            "Ref": "AppVolumeSize"
+          },
+          "AppVolumeType": "gp2",
+          "BackupBucket": {
+            "Fn::GetAtt": [
+              "S3Res",
+              "Outputs.GitlabBucketArn"
+            ]
+          },
+          "BackupCronURL": {
+            "Ref": "BackupCronURL"
+          },
+          "BackupFolder": "GitLab-Backups",
+          "CfnEndpointUrl": {
+            "Ref": "CfnEndpointUrl"
+          },
+          "DnsSuffix": {
+            "Ref": "DnsSuffix"
+          },
+          "EpelRepo": {
+            "Ref": "EpelRepo"
+          },
+          "GitLabConfScript": {
+            "Ref": "GitLabConfScript"
+          },
+          "GitLabPrepScript": {
+            "Ref": "GitLabPrepScript"
+          },
+          "GitRepoShareType": "glusterfs",
+          "GitRepoShareUri": {
+            "Fn::Join": [
+              "",
+              [
+                {
+                  "Fn::GetAtt": [
+                    "GfsN1Res",
+                    "Outputs.GfsNodeIp"
+                  ]
+                },
+                ":",
+                {
+                  "Ref": "GitRepoShareFsPath"
+                }
+              ]
+            ]
+          },
+          "InstanceRole": {
+            "Fn::GetAtt": [
+              "IamRes",
+              "Outputs.InstanceRoleProfile"
+            ]
+          },
+          "InstanceType": {
+            "Ref": "InstanceType"
+          },
+          "KeyPairName": {
+            "Ref": "KeyPairName"
+          },
+          "LdapCrypt": {
+            "Ref": "LdapCrypt"
+          },
+          "LdapHost": {
+            "Ref": "LdapHost"
+          },
+          "LdapPort": {
+            "Ref": "LdapPort"
+          },
+          "LdapProxyUser": {
+            "Ref": "LdapProxyUser"
+          },
+          "LdapSearchBase": {
+            "Ref": "LdapSearchBase"
+          },
+          "LdapUserPassword": {
+            "Ref": "LdapUserPassword"
+          },
+          "NoPublicIp": {
+            "Ref": "NoPublicIp"
+          },
+          "NoReboot": "true",
+          "PipIndexFips": {
+            "Ref": "PipIndexFips"
+          },
+          "PipRpm": {
+            "Ref": "PipRpm"
+          },
+          "ProvisionUser": {
+            "Ref": "ProvisionUser"
+          },
+          "ProxyName": {
+            "Ref": "ProxyName"
+          },
+          "PyStache": {
+            "Ref": "PyStache"
+          },
+          "RdsDbAdmin": {
+            "Fn::GetAtt": [
+              "RdsRes",
+              "Outputs.RdsDbUserName"
+            ]
+          },
+          "RdsDbHost": {
+            "Fn::GetAtt": [
+              "RdsRes",
+              "Outputs.RdsEndpointAddress"
+            ]
+          },
+          "RdsDbInstance": {
+            "Fn::GetAtt": [
+              "RdsRes",
+              "Outputs.RdsDbInstanceName"
+            ]
+          },
+          "RdsDbPasswd": {
+            "Fn::GetAtt": [
+              "RdsRes",
+              "Outputs.RdsDbUserPass"
+            ]
+          },
+          "SecurityGroupIds": {
+            "Fn::Join": [
+              ",",
+              [
+                {
+                  "Fn::GetAtt": [
+                    "SgRes",
+                    "Outputs.AppSg"
+                  ]
+                },
+                {
+                  "Fn::GetAtt": [
+                    "SgRes",
+                    "Outputs.NasSg"
+                  ]
+                },
+                {
+                  "Fn::GetAtt": [
+                    "SgRes",
+                    "Outputs.RdsSg"
+                  ]
+                }
+              ]
+            ]
+          },
+          "ServerHostname": {
+            "Ref": "ServerHostname"
+          },
+          "SmtpAuthSender": {
+            "Ref": "SmtpAuthSender"
+          },
+          "SmtpMessageDomain": {
+            "Ref": "SmtpMessageDomain"
+          },
+          "SmtpNoticeUser": {
+            "Ref": "SmtpNoticeUser"
+          },
+          "SmtpRelayFqdn": {
+            "Ref": "SmtpRelayFqdn"
+          },
+          "SmtpRelayPort": {
+            "Ref": "SmtpRelayPort"
+          },
+          "SmtpSenderPass": {
+            "Ref": "SmtpSenderPass"
+          },
+          "SubNetId": {
+            "Ref": "SubNetId"
+          }
+        },
+        "TemplateURL": {
+          "Ref": "GitlabEc2Template"
+        },
+        "TimeoutInMinutes": "10"
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "GfsN0Res": {
+      "Properties": {
+        "Parameters": {
+          "AmiId": {
+            "Ref": "AmiId"
+          },
+          "CfnEndpointUrl": {
+            "Ref": "CfnEndpointUrl"
+          },
+          "ClusterInstanceType": {
+            "Ref": "ClusterInstanceType"
+          },
+          "ClusterSecurityGroup": {
+            "Fn::Join": [
+              ",",
+              [
+                {
+                  "Fn::GetAtt": [
+                    "SgRes",
+                    "Outputs.NasSg"
+                  ]
+                }
+              ]
+            ]
+          },
+          "ConsumerApplication": "GitLab",
+          "EpelRepo": {
+            "Ref": "EpelRepo"
+          },
+          "GlusDomName": {
+            "Ref": "DnsSuffix"
+          },
+          "GlusNodeName": {
+            "Ref": "GlusNodeName"
+          },
+          "GlusNodeNumber": "00",
+          "GlusterGfsScript": {
+            "Ref": "GlusterGfsScript"
+          },
+          "GlusterOsprepScript": {
+            "Ref": "GlusterOsprepScript"
+          },
+          "GlusterPartnerIp": "",
+          "GlusterSubnets": {
+            "Fn::Select": [
+              "0",
+              {
+                "Ref": "ClusterableSvcSubnets"
+              }
+            ]
+          },
+          "InstanceProfile": {
+            "Fn::GetAtt": [
+              "IamRes",
+              "Outputs.InstanceRoleProfile"
+            ]
+          },
+          "KeyPairName": {
+            "Ref": "KeyPairName"
+          },
+          "PipRpm": {
+            "Ref": "PipRpm"
+          },
+          "PyStache": {
+            "Ref": "PyStache"
+          },
+          "ShareVolDev": "/dev/xvdf",
+          "ShareVolSize": {
+            "Ref": "ShareVolSize"
+          },
+          "ShareVolType": "gp2"
+        },
+        "TemplateURL": {
+          "Ref": "GlusNodeTemplate"
+        }
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "GfsN1Res": {
+      "Properties": {
+        "Parameters": {
+          "AmiId": {
+            "Ref": "AmiId"
+          },
+          "CfnEndpointUrl": {
+            "Ref": "CfnEndpointUrl"
+          },
+          "ClusterInstanceType": {
+            "Ref": "ClusterInstanceType"
+          },
+          "ClusterSecurityGroup": {
+            "Fn::Join": [
+              ",",
+              [
+                {
+                  "Fn::GetAtt": [
+                    "SgRes",
+                    "Outputs.NasSg"
+                  ]
+                }
+              ]
+            ]
+          },
+          "ConsumerApplication": "GitLab",
+          "EpelRepo": {
+            "Ref": "EpelRepo"
+          },
+          "GlusDomName": {
+            "Ref": "DnsSuffix"
+          },
+          "GlusNodeName": {
+            "Ref": "GlusNodeName"
+          },
+          "GlusNodeNumber": "01",
+          "GlusterGfsScript": {
+            "Ref": "GlusterGfsScript"
+          },
+          "GlusterOsprepScript": {
+            "Ref": "GlusterOsprepScript"
+          },
+          "GlusterPartnerIp": {
+            "Fn::Join": [
+              ",",
+              [
+                {
+                  "Fn::GetAtt": [
+                    "GfsN0Res",
+                    "Outputs.GfsNodeIp"
+                  ]
+                }
+              ]
+            ]
+          },
+          "GlusterSubnets": {
+            "Fn::Select": [
+              "1",
+              {
+                "Ref": "ClusterableSvcSubnets"
+              }
+            ]
+          },
+          "InstanceProfile": {
+            "Fn::GetAtt": [
+              "IamRes",
+              "Outputs.InstanceRoleProfile"
+            ]
+          },
+          "KeyPairName": {
+            "Ref": "KeyPairName"
+          },
+          "PipRpm": {
+            "Ref": "PipRpm"
+          },
+          "PyStache": {
+            "Ref": "PyStache"
+          },
+          "ShareVolDev": "/dev/xvdf",
+          "ShareVolSize": {
+            "Ref": "ShareVolSize"
+          },
+          "ShareVolType": "gp2"
+        },
+        "TemplateURL": {
+          "Ref": "GlusNodeTemplate"
+        }
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "IamRes": {
+      "Properties": {
+        "Parameters": {
+          "GitlabBucketArn": {
+            "Fn::GetAtt": [
+              "S3Res",
+              "Outputs.GitlabBucketArn"
+            ]
+          }
+        },
+        "TemplateURL": {
+          "Ref": "GitlabIamTemplate"
+        },
+        "TimeoutInMinutes": "10"
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "RdsRes": {
+      "Properties": {
+        "Parameters": {
+          "DbAdminName": {
+            "Ref": "DbAdminName"
+          },
+          "DbAdminPass": {
+            "Ref": "DbAdminPass"
+          },
+          "DbDataSize": {
+            "Ref": "DbDataSize"
+          },
+          "DbInstanceName": {
+            "Ref": "DbInstanceName"
+          },
+          "DbInstanceType": {
+            "Ref": "DbInstanceType"
+          },
+          "DbNodeName": {
+            "Ref": "DbNodeName"
+          },
+          "DbSecurityGroup": {
+            "Fn::GetAtt": [
+              "SgRes",
+              "Outputs.RdsSg"
+            ]
+          },
+          "DbSubnets": {
+            "Fn::Join": [
+              ",",
+              {
+                "Ref": "ClusterableSvcSubnets"
+              }
+            ]
+          },
+          "PgsqlVersion": {
+            "Ref": "PgsqlVersion"
+          },
+          "TargetVPC": {
+            "Ref": "TargetVPC"
+          }
+        },
+        "TemplateURL": {
+          "Ref": "GitlabRdsTemplate"
+        }
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "S3Res": {
+      "Properties": {
+        "Parameters": {
+          "GitlabBucket": {
+            "Ref": "GitlabBucket"
+          }
+        },
+        "TemplateURL": {
+          "Ref": "GitlabBucketTemplate"
+        },
+        "TimeoutInMinutes": "10"
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "SgRes": {
+      "Properties": {
+        "Parameters": {
+          "TargetVPC": {
+            "Ref": "TargetVPC"
+          }
+        },
+        "TemplateURL": {
+          "Ref": "SecurityGroupTemplate"
+        },
+        "TimeoutInMinutes": "10"
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    }
+  }
+}

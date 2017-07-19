@@ -1,0 +1,181 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Conditions": {
+    "SetNodeName": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "DbNodeName"
+            },
+            ""
+          ]
+        }
+      ]
+    }
+  },
+  "Description": "This template deployes a small, single-AZ PGSQL database to support GitLab.",
+  "Mappings": {},
+  "Metadata": {},
+  "Outputs": {
+    "RdsEndpointAddress": {
+      "Description": "RDS DB's endpoint FQDN.",
+      "Value": {
+        "Fn::GetAtt": [
+          "RDSdb",
+          "Endpoint.Address"
+        ]
+      }
+    },
+    "RdsDbUserName": {
+      "Description": "RDS DB's root user name.",
+      "Value": { "Ref": "DbAdminName"}
+    },
+    "RdsDbUserPass": {
+      "Description": "RDS DB's root user's password.",
+      "Value": { "Ref": "DbAdminPass"}
+    },
+    "RdsDbInstanceName": {
+      "Description": "RDS DB's instance-name.",
+      "Value": { "Ref": "DbInstanceName"}
+    }
+  },
+  "Parameters": {
+    "DbAdminName": {
+      "Description": "Name of the GitLab master database-user.",
+      "Type": "String"
+    },
+    "DbAdminPass": {
+      "Description": "Password of the GitLab master database-user.",
+      "Type": "String"
+    },
+    "DbDataSize": {
+      "ConstraintDescription": "Must be between 5GB and 16384GB.",
+      "Default": "5",
+      "Description": "Size in GiB of the RDS table-space to create.",
+      "MaxValue": "16384",
+      "MinValue": "5",
+      "Type": "Number"
+    },
+    "DbInstanceName": {
+      "Description": "Instance-name of the GitLab database.",
+      "Type": "String"
+    },
+    "DbInstanceType": {
+      "AllowedValues": [
+        "db.t2.micro",
+        "db.t2.small",
+        "db.t2.medium",
+        "db.t2.large",
+        "db.m3.medium",
+        "db.m3.large",
+        "db.m3.xlarge",
+        "db.m3.2xlarge",
+        "db.m4.large",
+        "db.m4.xlarge",
+        "db.m4.2xlarge",
+        "db.m4.4xlarge",
+        "db.m4.10xlarge",
+        "db.r3.large",
+        "db.r3.xlarge",
+        "db.r3.2xlarge",
+        "db.r3.4xlarge",
+        "db.r3.8xlarge"
+      ],
+      "Default": "db.t2.small",
+      "Description": "Amazon RDS instance type",
+      "Type": "String"
+    },
+    "DbNodeName": {
+      "Description": "NodeName of the GitLab database.",
+      "Type": "String"
+    },
+    "DbSecurityGroup": {
+      "Description": "List of security groups to apply to the RDS database.",
+      "Type": "List<AWS::EC2::SecurityGroup::Id>"
+    },
+    "DbSubnets": {
+      "Description": "Select at least two subnets, each in different Availability Zones",
+      "Type": "List<AWS::EC2::Subnet::Id>"
+    },
+    "PgsqlVersion": {
+      "AllowedValues": [
+        "9.6.3",
+        "9.6.2",
+        "9.6.1",
+        "9.5.7",
+        "9.5.6",
+        "9.5.4",
+        "9.5.2"
+      ],
+      "Default": "9.6.3",
+      "Description": "The X.Y.Z version of the PostGreSQL database to deploy.",
+      "Type": "String"
+    },
+    "TargetVPC": {
+      "AllowedPattern": "^vpc-[0-9a-f]*$",
+      "Description": "ID of the VPC to deploy cluster nodes into.",
+      "Type": "AWS::EC2::VPC::Id"
+    }
+  },
+  "Resources": {
+    "RDSdb": {
+      "Metadata": {},
+      "Properties": {
+        "AllocatedStorage": {
+          "Ref": "DbDataSize"
+        },
+        "AllowMajorVersionUpgrade": "true",
+        "AutoMinorVersionUpgrade": "true",
+        "BackupRetentionPeriod": "7",
+        "DBInstanceClass": {
+          "Ref": "DbInstanceType"
+        },
+        "DBInstanceIdentifier": {
+          "Fn::If": [
+            "SetNodeName",
+            {
+              "Ref": "DbNodeName"
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
+        "DBName": {
+          "Ref": "DbInstanceName"
+        },
+        "DBSubnetGroupName": {
+          "Ref": "RDSdbSubnetGroup"
+        },
+        "Engine": "postgres",
+        "EngineVersion": {
+          "Ref": "PgsqlVersion"
+        },
+        "MasterUserPassword": {
+          "Ref": "DbAdminPass"
+        },
+        "MasterUsername": {
+          "Ref": "DbAdminName"
+        },
+        "PreferredBackupWindow": "23:30-00:00",
+        "PreferredMaintenanceWindow": "sun:00:30-sun:01:00",
+        "PubliclyAccessible": "false",
+        "StorageType": "gp2",
+        "VPCSecurityGroups": {
+          "Ref": "DbSecurityGroup"
+        }
+      },
+      "Type": "AWS::RDS::DBInstance"
+    },
+    "RDSdbSubnetGroup": {
+      "Properties": {
+        "DBSubnetGroupDescription": "Subnets available for the RDS DB Instance",
+        "SubnetIds": {
+          "Ref": "DbSubnets"
+        }
+      },
+      "Type": "AWS::RDS::DBSubnetGroup"
+    }
+  }
+}
