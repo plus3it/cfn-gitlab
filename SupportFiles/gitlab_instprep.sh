@@ -166,7 +166,7 @@ curl -skL "${REPOSRC}" -o /etc/yum.repos.d/GitLab.repo || \
 echo "Successfully installed repodef for GitLab CE"
 # Ensure SCL repositories are available
 RELEASE=$(rpm -qf /etc/redhat-release --qf '%{name}')
-if [[ $(yum repolist all | grep -q scl)$? -ne 0 ]]
+if [[ $(yum repolist -y all | grep -q scl)$? -ne 0 ]]
 then
    yum install -y "${RELEASE}-scl" || \
       err_exit "Attempted install of Software CoLlections repodefs failed."
@@ -183,6 +183,56 @@ cat << EOF > /etc/profile.d/scl-ruby.sh
 source /opt/rh/rh-ruby23/enable
 export X_SCLS="\$(scl enable rh-ruby23 'echo \$X_SCLS')"
 EOF
+
+# Create GitLab backup script
+install -b -m 0700 /dev/null /usr/local/bin/backup.cron ||
+  echo "Couldn't create backup script"
+cat << EOF > /usr/local/bin/backup.cron
+#!/bin/bash
+#
+# Script to backup GitLab data to S3 bucket
+#################################################################
+PROGNAME=\$(basename "\${0}")
+LOGFACIL="user.err"
+for VAR in \$(cat /etc/cfn/GitLab.envs)
+do
+   export \$VAR
+done
+BUCKET="\${GITLAB_BACKUP_BUCKET:-UNDEF}"
+FOLDER="\${GITLAB_BACKUP_FOLDER:-UNDEF}"
+REGION="\${GITLAB_AWS_REGION:-UNDEF}"
+DAYSUB="\$(date '+%A')"
+SRCDIR=/var/opt/gitlab/backups/
+
+function err_exit {
+   echo "\${1}"
+   logger -t "\${PROGNAME}" -p \${LOGFACIL} "\${1}"
+   exit 1
+}
+
+# Create GitLab archive file
+printf "Creating backup archive-file in %s..." "\${SRCDIR}"
+gitlab-rake gitlab:backup:create SKIP=db STRATEGY=copy > /dev/null 2>&1 && \\
+  echo "Success" || err_exit 'Failed creating backup archive-file'
+
+BKUPS=(\$(echo \${SRCDIR}/*))
+for BKUP in \${BKUPS[@]}
+do
+   printf "Uploading %s to s3://%s/%s... " "\${BKUP}" "\${BUCKET}" "\${FOLDER}"
+   aws --region "\${REGION}" s3 mv "\${BKUP}" s3://"\${BUCKET}"/"\${FOLDER}"/ && \\
+     echo "Success" || echo 'Failed moving backup archive-file to S3'
+done
+EOF
+
+# Here documents are weird about status-capture, so...
+# shellcheck disable=SC2181
+if [[ $? -ne 0 ]]
+then
+   echo "Couldn't insert backup script content"
+fi
+
+# Add backupscript to crontab
+(crontab -l 2>/dev/null; echo "0 23 * * * /usr/local/bin/backup.cron") | crontab -
 
 # shellcheck disable=SC1091
 source /etc/profile.d/scl-ruby.sh || \
