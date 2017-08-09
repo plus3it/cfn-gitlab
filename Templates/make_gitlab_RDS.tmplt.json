@@ -1,15 +1,10 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
   "Conditions": {
+    "SetIops": { "Fn::Equals": [ { "Ref": "DbStorageType" }, "io1" ] },
     "SetNodeName": {
       "Fn::Not": [
-        {
-          "Fn::Equals": [
-            {
-              "Ref": "DbNodeName"
-            },
-            ""
-          ]
+        { "Fn::Equals": [ { "Ref": "DbNodeName" }, "" ]
         }
       ]
     }
@@ -86,6 +81,15 @@
       "Description": "Amazon RDS instance type",
       "Type": "String"
     },
+    "DbIsMultiAz": {
+      "AllowedValues": [
+        "false",
+        "true"
+      ],
+      "Default": "false",
+      "Description": "Select whether to create a multi-AZ RDS deployment.",
+      "Type": "String"
+    },
     "DbNodeName": {
       "Description": "NodeName of the GitLab database.",
       "Type": "String"
@@ -93,6 +97,23 @@
     "DbSecurityGroup": {
       "Description": "List of security groups to apply to the RDS database.",
       "Type": "List<AWS::EC2::SecurityGroup::Id>"
+    },
+    "DbStorageType" : {
+      "AllowedValues": [
+        "standard",
+        "gp2",
+        "io1"
+      ],
+      "Default": "gp2",
+      "Description": "Type of storage used to host DB-data.",
+      "Type": "String"
+    },
+    "DbStorageIops" : {
+      "Default": "1000",
+      "Description": "Provisioned-IOPS of storage to used to host DB-data.",
+      "MaxValue": "30000",
+      "MinValue": "1000",
+      "Type": "Number"
     },
     "DbSubnets": {
       "Description": "Select at least two subnets, each in different Availability Zones",
@@ -128,43 +149,33 @@
         "AllowMajorVersionUpgrade": "true",
         "AutoMinorVersionUpgrade": "true",
         "BackupRetentionPeriod": "7",
-        "DBInstanceClass": {
-          "Ref": "DbInstanceType"
-        },
+        "DBInstanceClass": { "Ref": "DbInstanceType" },
         "DBInstanceIdentifier": {
           "Fn::If": [
             "SetNodeName",
-            {
-              "Ref": "DbNodeName"
-            },
-            {
-              "Ref": "AWS::NoValue"
-            }
+            { "Ref": "DbNodeName" },
+            { "Ref": "AWS::NoValue" }
           ]
         },
-        "DBName": {
-          "Ref": "DbInstanceName"
-        },
-        "DBSubnetGroupName": {
-          "Ref": "RDSdbSubnetGroup"
-        },
+        "DBName": { "Ref": "DbInstanceName" },
+        "DBSubnetGroupName": { "Ref": "RDSdbSubnetGroup" },
         "Engine": "postgres",
-        "EngineVersion": {
-          "Ref": "PgsqlVersion"
-        },
-        "MasterUserPassword": {
-          "Ref": "DbAdminPass"
-        },
-        "MasterUsername": {
-          "Ref": "DbAdminName"
-        },
+        "EngineVersion": { "Ref": "PgsqlVersion" },
+        "MasterUserPassword": { "Ref": "DbAdminPass" },
+        "MasterUsername": { "Ref": "DbAdminName" },
+        "MultiAZ": { "Ref": "DbIsMultiAz" },
         "PreferredBackupWindow": "23:30-00:00",
         "PreferredMaintenanceWindow": "sun:00:30-sun:01:00",
         "PubliclyAccessible": "false",
-        "StorageType": "gp2",
-        "VPCSecurityGroups": {
-          "Ref": "DbSecurityGroup"
-        }
+        "StorageType": { "Ref": "DbStorageType" },
+        "Iops": {
+          "Fn::If": [
+            "SetIops",
+            { "Ref": "DbStorageIops" },
+            { "Ref": "AWS::NoValue" }
+          ]
+        },
+        "VPCSecurityGroups": { "Ref": "DbSecurityGroup" }
       },
       "Type": "AWS::RDS::DBInstance"
     },

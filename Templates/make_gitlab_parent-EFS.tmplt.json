@@ -5,21 +5,74 @@
     "AWS::CloudFormation::Interface": {
       "ParameterGroups": [
         {
-          "Label": {
-            "default": "Stack Bucket Objects"
-          },
+          "Label": { "default": "Child Templates" },
           "Parameters": [
-            "GitlabBucket"
+            "SecurityGroupTemplate",
+            "GitlabBucketTemplate",
+            "GitlabEfsTemplate",
+            "GitlabRdsTemplate",
+            "GitlabIamTemplate",
+            "GitlabEc2Template"
           ]
         },
         {
-          "Label": {
-            "default": "Stack child-templates"
-          },
+          "Label": { "default": "EC2 Parameters" },
           "Parameters": [
-            "GitlabBucketTemplate",
-            "GitlabIamTemplate",
-            "SecurityGroupTemplate"
+            "InstanceType",
+            "AmiId",
+            "ProvisionUser",
+            "KeyPairName",
+            "AdminPubkeyURL",
+            "ServerHostname",
+            "DnsSuffix",
+            "NoReboot",
+            "NoPublicIp",
+            "SubNetId",
+            "AppVolumeDevice",
+            "AppVolumeMountPath",
+            "AppVolumeSize",
+            "AppVolumeType",
+            "EpelRepo",
+            "PipRpm",
+            "PyStache",
+            "PipIndexFips"
+          ]
+        },
+        {
+          "Label": { "default": "RDS Parameters" },
+          "Parameters": [
+            "DbInstanceType",
+            "DbDataSize",
+            "PgsqlVersion",
+            "DbNodeName",
+            "DbInstanceName",
+            "DbAdminName",
+            "DbAdminPass"
+          ]
+        },
+        {
+          "Label": { "default": "Git Build-Parameters" },
+          "Parameters": [
+            "ProxyName",
+            "GitLabPrepScript",
+            "GitLabConfScript",
+            "BackupCronURL",
+            "GitlabBucket",
+            "BackupFolder",
+            "GitRepoShareFsPath",
+            "GitRepoShareType",
+            "LdapHost",
+            "LdapPort",
+            "LdapUserPassword",
+            "LdapProxyUser",
+            "LdapSearchBase",
+            "LdapCrypt",
+            "SmtpRelayFqdn",
+            "SmtpRelayPort",
+            "SmtpAuthSender",
+            "SmtpSenderPass",
+            "SmtpMessageDomain",
+            "SmtpNoticeUser"
           ]
         }
       ]
@@ -89,12 +142,6 @@
       "Description": "Folder in S3 Bucket to host backups of GitLab config-data",
       "Type": "String"
     },
-    "CfnEndpointUrl": {
-      "Description": "URL to the CloudFormation Endpoint. e.g. https://cloudformation.us-east-1.amazonaws.com",
-      "Type": "String",
-      "Default": "",
-      "AllowedPattern": "^$|^http://.*$|^https://.*$"
-    },
     "DbAdminName": {
       "Description": "Name of the GitLab master database-user.",
       "Type": "String"
@@ -144,7 +191,7 @@
       "Description": "NodeName of the GitLab database.",
       "Type": "String"
     },
-    "DbSubnets": {
+    "HaSvcSubnets": {
       "Description": "Select three subnets - each from different Availability Zones.",
       "Type": "List<AWS::EC2::Subnet::Id>"
     },
@@ -152,10 +199,6 @@
       "Description" : "Suffix for GitLab's hostname and DNS record",
       "Type": "String",
       "ConstraintDescription": "An alphanumeric string to complete the domain portion of the instance's FQDN."
-    },
-    "EfsSubnet": {
-      "Description": "Select three subnets - each from different Availability Zones.",
-      "Type": "List<AWS::EC2::Subnet::Id>"
     },
     "EpelRepo": {
       "Description" : "Name of network's EPEL repo.",
@@ -398,7 +441,16 @@
           },
           "BackupCronURL": { "Ref": "BackupCronURL" },
           "BackupFolder": { "Ref": "BackupFolder" },
-          "CfnEndpointUrl": { "Ref": "CfnEndpointUrl" },
+          "CfnEndpointUrl": {
+            "Fn::Join": [
+              ".",
+              [
+                "https://cloudformation",
+                { "Ref" : "AWS::Region" },
+                { "Ref": "AwsRegionTld" }
+              ]
+            ]
+          },
           "DnsSuffix": { "Ref": "DnsSuffix" },
           "EpelRepo": { "Ref": "EpelRepo" },
           "GitLabConfScript": { "Ref": "GitLabConfScript" },
@@ -484,15 +536,11 @@
           "EfsSubnet": {
             "Fn::Join": [
               ",",
-              {
-                "Ref": "EfsSubnet"
-              }
+              { "Ref": "HaSvcSubnets" }
             ]
           }
         },
-        "TemplateURL": {
-          "Ref": "GitlabEfsTemplate"
-        },
+        "TemplateURL": { "Ref": "GitlabEfsTemplate" },
         "TimeoutInMinutes": "10"
       },
       "Type": "AWS::CloudFormation::Stack"
@@ -507,9 +555,7 @@
             ]
           }
         },
-        "TemplateURL": {
-          "Ref": "GitlabIamTemplate"
-        },
+        "TemplateURL": { "Ref": "GitlabIamTemplate" },
         "TimeoutInMinutes": "10"
       },
       "Type": "AWS::CloudFormation::Stack"
@@ -517,24 +563,12 @@
     "RdsRes": {
       "Properties": {
         "Parameters": {
-          "DbAdminName": {
-            "Ref": "DbAdminName"
-          },
-          "DbAdminPass": {
-            "Ref": "DbAdminPass"
-          },
-          "DbDataSize": {
-            "Ref": "DbDataSize"
-          },
-          "DbInstanceName": {
-            "Ref": "DbInstanceName"
-          },
-          "DbInstanceType": {
-            "Ref": "DbInstanceType"
-          },
-          "DbNodeName": {
-            "Ref": "DbNodeName"
-          },
+          "DbAdminName": { "Ref": "DbAdminName" },
+          "DbAdminPass": { "Ref": "DbAdminPass" },
+          "DbDataSize": { "Ref": "DbDataSize" },
+          "DbInstanceName": { "Ref": "DbInstanceName" },
+          "DbInstanceType": { "Ref": "DbInstanceType" },
+          "DbNodeName": { "Ref": "DbNodeName" },
           "DbSecurityGroup": {
             "Fn::GetAtt": [
               "SgRes",
@@ -544,34 +578,23 @@
           "DbSubnets": {
             "Fn::Join": [
               ",",
-              {
-                "Ref": "DbSubnets"
-              }
+              { "Ref": "HaSvcSubnets" }
             ]
           },
-          "PgsqlVersion": {
-            "Ref": "PgsqlVersion"
-          },
-          "TargetVPC": {
-            "Ref": "TargetVPC"
-          }
+          "DbIsMultiAz": "true",
+          "PgsqlVersion": { "Ref": "PgsqlVersion" },
+          "TargetVPC": { "Ref": "TargetVPC" }
         },
-        "TemplateURL": {
-          "Ref": "GitlabRdsTemplate"
-        }
+        "TemplateURL": { "Ref": "GitlabRdsTemplate" }
       },
       "Type": "AWS::CloudFormation::Stack"
     },
     "S3Res": {
       "Properties": {
         "Parameters": {
-          "GitlabBucket": {
-            "Ref": "GitlabBucket"
-          }
+          "GitlabBucket": { "Ref": "GitlabBucket" }
         },
-        "TemplateURL": {
-          "Ref": "GitlabBucketTemplate"
-        },
+        "TemplateURL": { "Ref": "GitlabBucketTemplate" },
         "TimeoutInMinutes": "10"
       },
       "Type": "AWS::CloudFormation::Stack"
@@ -579,13 +602,9 @@
     "SgRes": {
       "Properties": {
         "Parameters": {
-          "TargetVPC": {
-            "Ref": "TargetVPC"
-          }
+          "TargetVPC": { "Ref": "TargetVPC" }
         },
-        "TemplateURL": {
-          "Ref": "SecurityGroupTemplate"
-        },
+        "TemplateURL": { "Ref": "SecurityGroupTemplate" },
         "TimeoutInMinutes": "10"
       },
       "Type": "AWS::CloudFormation::Stack"
