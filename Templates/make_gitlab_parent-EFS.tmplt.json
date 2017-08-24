@@ -437,7 +437,7 @@
           "AppVolumeSize": { "Ref": "AppVolumeSize" },
           "AppVolumeType": { "Ref": "AppVolumeType" },
           "BackupBucket": {
-            "Fn::GetAtt": [ "S3Res", "Outputs.GitlabBucketArn" ]
+            "Fn::GetAtt": [ "S3Res", "Outputs.GitlabBucketName" ]
           },
           "BackupCronURL": { "Ref": "BackupCronURL" },
           "BackupFolder": { "Ref": "BackupFolder" },
