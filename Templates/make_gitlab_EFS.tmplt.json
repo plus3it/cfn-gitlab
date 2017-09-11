@@ -2,6 +2,20 @@
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "This template sets up the EFS filesystems used by GitLab for persistent storage",
   "Outputs": {
+    "EfsEndpoint": {
+      "Description": "FQDN for GitLab EFS endpoint.",
+      "Value": {
+        "Fn::Join": [
+          ".",
+          [
+            { "Ref": "GitLabEFS" },
+            "efs",
+            { "Ref": "AWS::Region" },
+            { "Ref": "ServiceTld" }
+          ]
+        ]
+      }
+    },
     "EfsId": {
       "Value": { "Ref": "GitLabEFS" },
       "Description": "GitLab EFS filesystem-ID."
@@ -27,6 +41,11 @@
     "EfsSubnet": {
       "Type": "List<AWS::EC2::Subnet::Id>",
       "Description": "Select three subnets - each from different Availability Zones."
+    },
+    "ServiceTld": {
+      "Default": "amazonaws.com",
+      "Description": "TLD of the created EFS-endpoint.",
+      "Type": "String"
     }
   },
   "Resources": {

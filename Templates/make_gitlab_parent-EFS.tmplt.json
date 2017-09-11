@@ -5,7 +5,9 @@
     "AWS::CloudFormation::Interface": {
       "ParameterGroups": [
         {
-          "Label": { "default": "Child Templates" },
+          "Label": {
+            "default": "Child Templates"
+          },
           "Parameters": [
             "SecurityGroupTemplate",
             "GitlabBucketTemplate",
@@ -16,7 +18,9 @@
           ]
         },
         {
-          "Label": { "default": "EC2 Parameters" },
+          "Label": {
+            "default": "EC2 Parameters"
+          },
           "Parameters": [
             "InstanceType",
             "AmiId",
@@ -39,7 +43,9 @@
           ]
         },
         {
-          "Label": { "default": "RDS Parameters" },
+          "Label": {
+            "default": "RDS Parameters"
+          },
           "Parameters": [
             "DbInstanceType",
             "DbDataSize",
@@ -51,7 +57,9 @@
           ]
         },
         {
-          "Label": { "default": "Git Build-Parameters" },
+          "Label": {
+            "default": "Git Build-Parameters"
+          },
           "Parameters": [
             "ProxyName",
             "GitLabPrepScript",
@@ -74,25 +82,33 @@
             "SmtpMessageDomain",
             "SmtpNoticeUser"
           ]
+        },
+        {
+          "Label": {
+            "default": "Miscellaneous"
+          },
+          "Parameters": [
+            "AwsRegionTld",
+            "TargetVPC",
+            "HaSvcSubnets",
+            "RolePrefix"
+          ]
         }
       ]
     }
   },
   "Parameters": {
     "AdminPubkeyURL": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
       "Description": "URL the file containing the admin users' SSH public keys.",
-      "Type": "String",
-      "AllowedPattern": "^$|^http://.*$|^https://.*$"
+      "Type": "String"
     },
     "AmiId": {
+      "AllowedPattern": "^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$",
       "Description": "ID of the AMI to launch",
-      "Type": "String",
-      "AllowedPattern": "^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"
+      "Type": "String"
     },
     "AppVolumeDevice": {
-      "Description": "Device to mount an extra EBS volume. Leave blank to launch without an extra application volume",
-      "Type": "String",
-      "Default": "",
       "AllowedValues": [
         "",
         "/dev/xvdf",
@@ -100,33 +116,36 @@
         "/dev/xvdh",
         "/dev/xvdi",
         "/dev/xvdj"
-      ]
+      ],
+      "Default": "",
+      "Description": "Device to mount an extra EBS volume. Leave blank to launch without an extra application volume",
+      "Type": "String"
     },
     "AppVolumeMountPath": {
-      "Description": "Filesystem path to mount the extra app volume. Ignored if \"AppVolumeDevice\" is blank",
-      "Type": "String",
+      "AllowedPattern": "/.*",
       "Default": "/opt/gitlab",
-      "AllowedPattern": "/.*"
+      "Description": "Filesystem path to mount the extra app volume. Ignored if \"AppVolumeDevice\" is blank",
+      "Type": "String"
     },
     "AppVolumeSize": {
-      "Description": "Size in GB of the EBS volume to create. Ignored if \"AppVolumeDevice\" is blank",
-      "Type": "Number",
+      "ConstraintDescription": "Must be between 5GB and 16384GB.",
       "Default": "10",
-      "MinValue": "5",
+      "Description": "Size in GB of the EBS volume to create. Ignored if \"AppVolumeDevice\" is blank",
       "MaxValue": "16384",
-      "ConstraintDescription": "Must be between 5GB and 16384GB."
+      "MinValue": "5",
+      "Type": "Number"
     },
     "AppVolumeType": {
-      "Description": "Type of EBS volume to create. Ignored if \"AppVolumeDevice\" is blank",
-      "Type": "String",
-      "Default": "gp2",
       "AllowedValues": [
         "gp2",
         "io1",
         "sc1",
         "st1",
         "standard"
-      ]
+      ],
+      "Default": "gp2",
+      "Description": "Type of EBS volume to create. Ignored if \"AppVolumeDevice\" is blank",
+      "Type": "String"
     },
     "AwsRegionTld": {
       "Default": "amazonaws.com",
@@ -134,9 +153,9 @@
       "Type": "String"
     },
     "BackupCronURL": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
       "Description": "URL to the GitLab backup cron-file",
-      "Type": "String",
-      "AllowedPattern": "^$|^http://.*$|^https://.*$"
+      "Type": "String"
     },
     "BackupFolder": {
       "Description": "Folder in S3 Bucket to host backups of GitLab config-data",
@@ -191,36 +210,31 @@
       "Description": "NodeName of the GitLab database.",
       "Type": "String"
     },
-    "HaSvcSubnets": {
-      "Description": "Select three subnets - each from different Availability Zones.",
-      "Type": "List<AWS::EC2::Subnet::Id>"
-    },
     "DnsSuffix": {
-      "Description" : "Suffix for GitLab's hostname and DNS record",
-      "Type": "String",
-      "ConstraintDescription": "An alphanumeric string to complete the domain portion of the instance's FQDN."
+      "ConstraintDescription": "An alphanumeric string to complete the domain portion of the instance's FQDN.",
+      "Description": "Suffix for GitLab's hostname and DNS record",
+      "Type": "String"
     },
     "EpelRepo": {
-      "Description" : "Name of network's EPEL repo.",
-      "Type": "String",
-      "Default": "epel",
       "AllowedPattern": "^[a-z][a-z0-9-]*$",
-      "ConstraintDescription": "An alphanumeric string that represents the EPEL yum repo's label."
+      "ConstraintDescription": "An alphanumeric string that represents the EPEL yum repo's label.",
+      "Default": "epel",
+      "Description": "Name of network's EPEL repo.",
+      "Type": "String"
     },
     "GitLabConfScript": {
+      "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$",
       "Description": "URL of the script that localizes GitLab for running in the target environment",
-      "Type": "String",
-      "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$"
-    },
-    "GitlabEc2Template": {
-      "AllowedPattern": "^$|^http://.*$|^https://.*$",
-      "Description": "URL to the child-template for creating the GitLab EC2 instance.",
       "Type": "String"
     },
     "GitLabPrepScript": {
+      "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$",
       "Description": "URL of the script that preps the OS to host GitLab",
-      "Type": "String",
-      "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$"
+      "Type": "String"
+    },
+    "GitRepoShareFsPath": {
+      "Description": "URI of network share hosting persisted git repository content.",
+      "Type": "String"
     },
     "GitRepoShareType": {
       "AllowedValues": [
@@ -228,10 +242,6 @@
         "nfs"
       ],
       "Description": "Type of network share hosting persisted git repository content.",
-      "Type": "String"
-    },
-    "GitRepoShareFsPath": {
-      "Description": "URI of network share hosting persisted git repository content.",
       "Type": "String"
     },
     "GitlabBucket": {
@@ -242,6 +252,11 @@
     "GitlabBucketTemplate": {
       "AllowedPattern": "^$|^http://.*$|^https://.*$",
       "Description": "URL to the child-template for creating the gitlab-bucket.",
+      "Type": "String"
+    },
+    "GitlabEc2Template": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the GitLab EC2 instance.",
       "Type": "String"
     },
     "GitlabEfsTemplate": {
@@ -259,10 +274,11 @@
       "Description": "URL to the child-template for creating the GitLab RDS service.",
       "Type": "String"
     },
+    "HaSvcSubnets": {
+      "Description": "Select three subnets - each from different Availability Zones.",
+      "Type": "List<AWS::EC2::Subnet::Id>"
+    },
     "InstanceType": {
-      "Description": "Amazon EC2 instance type",
-      "Type": "String",
-      "Default": "t2.micro",
       "AllowedValues": [
         "t2.micro",
         "t2.small",
@@ -275,32 +291,35 @@
         "m4.xlarge",
         "m4.2xlarge",
         "r3.2xlarge"
-      ]
+      ],
+      "Default": "t2.micro",
+      "Description": "Amazon EC2 instance type",
+      "Type": "String"
     },
     "KeyPairName": {
       "Description": "Public/private key pairs allow you to securely connect to your instance after it launches",
       "Type": "AWS::EC2::KeyPair::KeyName"
     },
     "LdapCrypt": {
-      "Description": "Encryption-method to use for securing the LDAP connection (\"plain\" is BASE64-encoded).",
-      "Type": "String",
-      "Default": "plain",
       "AllowedValues": [
         "plain",
         "ssl",
         "tls"
-      ]
+      ],
+      "Default": "plain",
+      "Description": "Encryption-method to use for securing the LDAP connection (\"plain\" is BASE64-encoded).",
+      "Type": "String"
     },
     "LdapHost": {
+      "AllowedPattern": "^[a-z0-9.-]*$",
       "Description": "FQDN of the LDAP host/Active Directory server.",
-      "Type": "String",
-      "AllowedPattern": "^[a-z0-9.-]*$"
+      "Type": "String"
     },
     "LdapPort": {
-      "Description": "TCP Port that the LDAP/AD service listens on.",
-      "Type": "String",
+      "AllowedPattern": "^[0-9]*$",
       "Default": "389",
-      "AllowedPattern": "^[0-9]*$"
+      "Description": "TCP Port that the LDAP/AD service listens on.",
+      "Type": "String"
     },
     "LdapProxyUser": {
       "Description": "Name of the user that has directory-lookup privileges on the target directory service. Use DN or UPN format.",
@@ -315,22 +334,22 @@
       "Type": "String"
     },
     "NoPublicIp": {
-      "Description": "Controls whether to assign the instance a public IP. Recommended to leave at \"true\" _unless_ launching in a public subnet",
-      "Type": "String",
-      "Default": "true",
       "AllowedValues": [
         "false",
         "true"
-      ]
+      ],
+      "Default": "true",
+      "Description": "Controls whether to assign the instance a public IP. Recommended to leave at \"true\" _unless_ launching in a public subnet",
+      "Type": "String"
     },
     "NoReboot": {
-      "Description": "Controls whether to reboot the instance as the last step of cfn-init execution",
-      "Type": "String",
-      "Default": "false",
       "AllowedValues": [
         "false",
         "true"
-      ]
+      ],
+      "Default": "false",
+      "Description": "Controls whether to reboot the instance as the last step of cfn-init execution",
+      "Type": "String"
     },
     "PgsqlVersion": {
       "AllowedValues": [
@@ -347,33 +366,37 @@
       "Type": "String"
     },
     "PipIndexFips": {
-      "Description" : "URL of pip index  that is compatible with FIPS 140-2 requirements.",
-      "Type": "String",
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
       "Default": "https://pypi.org/simple/",
-      "AllowedPattern": "^$|^http://.*$|^https://.*$"
+      "Description": "URL of pip index  that is compatible with FIPS 140-2 requirements.",
+      "Type": "String"
     },
     "PipRpm": {
-      "Description" : "Name of preferred pip RPM.",
-      "Type": "String",
-      "Default": "python2-pip"
+      "Default": "python2-pip",
+      "Description": "Name of preferred pip RPM.",
+      "Type": "String"
     },
     "ProvisionUser": {
-      "Description": "Default login user account name.",
-      "Type": "String",
-      "Default": "autogitlab",
       "AllowedPattern": "[a-z0-9]{6,12}+",
-      "ConstraintDescription": "Alphanumeric string between 6 and 12 characters."
+      "ConstraintDescription": "Alphanumeric string between 6 and 12 characters.",
+      "Default": "autogitlab",
+      "Description": "Default login user account name.",
+      "Type": "String"
     },
     "ProxyName": {
-      "Description" : "FQDN of public-facing reverse-proxy.",
-      "Type": "String",
       "AllowedPattern": "^[a-z][a-z0-9.-]*[a-z]$",
-      "ConstraintDescription": "Alphanumeric string DNS FQDN representing the RDS end-point name."
+      "ConstraintDescription": "Alphanumeric string DNS FQDN representing the RDS end-point name.",
+      "Description": "FQDN of public-facing reverse-proxy.",
+      "Type": "String"
     },
     "PyStache": {
-      "Description" : "Name of preferred pystache RPM.",
-      "Type": "String",
-      "Default": "pystache"
+      "Default": "pystache",
+      "Description": "Name of preferred pystache RPM.",
+      "Type": "String"
+    },
+    "RolePrefix": {
+      "Description": "Prefix to apply to IAM role to make things a bit prettier (optional).",
+      "Type": "String"
     },
     "SecurityGroupTemplate": {
       "AllowedPattern": "^$|^http://.*$|^https://.*$",
@@ -381,25 +404,30 @@
       "Type": "String"
     },
     "ServerHostname": {
-      "Description" : "Node-name for GitLab's hostname and DNS record",
-      "Type": "String",
+      "ConstraintDescription": "An alphanumeric string to complete the hostname portion of the instance's FQDN.",
       "Default": "gitlab",
-      "ConstraintDescription": "An alphanumeric string to complete the hostname portion of the instance's FQDN."
+      "Description": "Node-name for GitLab's hostname and DNS record",
+      "Type": "String"
+    },
+    "ServiceTld": {
+      "Default": "amazonaws.com",
+      "Description": "TLD of the created EFS-endpoint.",
+      "Type": "String"
     },
     "SmtpAuthSender": {
-      "Description" : "Authorized SMTP-relay sender ID.",
+      "Description": "Authorized SMTP-relay sender ID.",
       "Type": "String"
     },
     "SmtpMessageDomain": {
-      "Description" : "@DOMAIN value for notification mails.",
+      "Description": "@DOMAIN value for notification mails.",
       "Type": "String"
     },
     "SmtpNoticeUser": {
-      "Description" : "User to set in outbound messages \"From:\" address.",
+      "Description": "User to set in outbound messages \"From:\" address.",
       "Type": "String"
     },
     "SmtpRelayFqdn": {
-      "Description" : "FQDN of the SMTP-relay host.",
+      "Description": "FQDN of the SMTP-relay host.",
       "Type": "String"
     },
     "SmtpRelayPort": {
@@ -407,13 +435,13 @@
         "25",
         "465",
         "587"
-        ],
+      ],
       "Default": "465",
-      "Description" : "Listener-port of the SMTP-relay host.",
+      "Description": "Listener-port of the SMTP-relay host.",
       "Type": "String"
     },
     "SmtpSenderPass": {
-      "Description" : "Password or the authorized SMTP-relay sender ID.",
+      "Description": "Password or the authorized SMTP-relay sender ID.",
       "Type": "String"
     },
     "SubNetId": {
@@ -446,7 +474,7 @@
               ".",
               [
                 "https://cloudformation",
-                { "Ref" : "AWS::Region" },
+                { "Ref": "AWS::Region" },
                 { "Ref": "AwsRegionTld" }
               ]
             ]
@@ -462,7 +490,7 @@
               [
                 { "Fn::GetAtt": [ "EfsRes", "Outputs.EfsId" ] },
                 ".efs.",
-                { "Ref" : "AWS::Region" },
+                { "Ref": "AWS::Region" },
                 ".",
                 { "Ref": "AwsRegionTld" },
                 ":",
@@ -488,9 +516,7 @@
           "ProvisionUser": { "Ref": "ProvisionUser" },
           "ProxyName": { "Ref": "ProxyName" },
           "PyStache": { "Ref": "PyStache" },
-          "RdsDbAdmin": {
-            "Fn::GetAtt": [ "RdsRes", "Outputs.RdsDbUserName" ]
-          },
+          "RdsDbAdmin": { "Fn::GetAtt": [ "RdsRes", "Outputs.RdsDbUserName" ] },
           "RdsDbHost": {
             "Fn::GetAtt": [ "RdsRes", "Outputs.RdsEndpointAddress" ]
           },
@@ -527,18 +553,14 @@
     "EfsRes": {
       "Properties": {
         "Parameters": {
-          "EfsSg": {
-            "Fn::GetAtt": [
-              "SgRes",
-              "Outputs.NasSg"
-            ]
-          },
+          "EfsSg": { "Fn::GetAtt": [ "SgRes", "Outputs.NasSg" ] },
           "EfsSubnet": {
             "Fn::Join": [
               ",",
               { "Ref": "HaSvcSubnets" }
             ]
-          }
+          },
+          "ServiceTld": { "Ref": "ServiceTld" }
         },
         "TemplateURL": { "Ref": "GitlabEfsTemplate" },
         "TimeoutInMinutes": "10"
@@ -549,11 +571,10 @@
       "Properties": {
         "Parameters": {
           "GitlabBucketArn": {
-            "Fn::GetAtt": [
-              "S3Res",
-              "Outputs.GitlabBucketArn"
-            ]
-          }
+            "Fn::GetAtt": [ "S3Res", "Outputs.GitlabBucketArn" ]
+          },
+          "RolePrefix": { "Ref": "RolePrefix" },
+          "ServiceTld": { "Ref": "ServiceTld" }
         },
         "TemplateURL": { "Ref": "GitlabIamTemplate" },
         "TimeoutInMinutes": "10"
@@ -568,12 +589,10 @@
           "DbDataSize": { "Ref": "DbDataSize" },
           "DbInstanceName": { "Ref": "DbInstanceName" },
           "DbInstanceType": { "Ref": "DbInstanceType" },
+          "DbIsMultiAz": "true",
           "DbNodeName": { "Ref": "DbNodeName" },
           "DbSecurityGroup": {
-            "Fn::GetAtt": [
-              "SgRes",
-              "Outputs.RdsSg"
-            ]
+            "Fn::GetAtt": [ "SgRes", "Outputs.RdsSg" ]
           },
           "DbSubnets": {
             "Fn::Join": [
@@ -581,7 +600,6 @@
               { "Ref": "HaSvcSubnets" }
             ]
           },
-          "DbIsMultiAz": "true",
           "PgsqlVersion": { "Ref": "PgsqlVersion" },
           "TargetVPC": { "Ref": "TargetVPC" }
         },
