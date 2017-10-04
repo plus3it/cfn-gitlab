@@ -14,7 +14,8 @@
             "GitlabEfsTemplate",
             "GitlabRdsTemplate",
             "GitlabIamTemplate",
-            "GitlabEc2Template"
+            "GitlabEc2Template",
+            "GitlabElbTemplate"
           ]
         },
         {
@@ -29,10 +30,7 @@
             "AdminPubkeyURL",
             "ServerHostname",
             "DnsSuffix",
-            "NoReboot",
-            "NoPublicIp",
             "SubNetId",
-            "AppVolumeDevice",
             "AppVolumeMountPath",
             "AppVolumeSize",
             "AppVolumeType",
@@ -106,19 +104,6 @@
     "AmiId": {
       "AllowedPattern": "^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$",
       "Description": "ID of the AMI to launch",
-      "Type": "String"
-    },
-    "AppVolumeDevice": {
-      "AllowedValues": [
-        "",
-        "/dev/xvdf",
-        "/dev/xvdg",
-        "/dev/xvdh",
-        "/dev/xvdi",
-        "/dev/xvdj"
-      ],
-      "Default": "",
-      "Description": "Device to mount an extra EBS volume. Leave blank to launch without an extra application volume",
       "Type": "String"
     },
     "AppVolumeMountPath": {
@@ -227,17 +212,6 @@
       "Description": "URL of the script that localizes GitLab for running in the target environment",
       "Type": "String"
     },
-    "GitLabInstanceId": {
-      "Description": "ID of the EC2-instance this template should create a proxy for.",
-      "Type": "String"
-    },
-    "GitLabListenPort": {
-      "Default": "443",
-      "Description": "TCP Port number on which the GitLab ELB listens for requests.",
-      "MaxValue": "65535",
-      "MinValue": "1",
-      "Type": "Number"
-    },
     "GitLabListenerCert": {
       "Default": "",
       "Description": "Name/ID of the ACM-managed SSL Certificate to protect public listener.",
@@ -298,6 +272,11 @@
     "GitlabElbSubnets": {
       "Description": "Select three subnets - each from different Availability Zones.",
       "Type": "List<AWS::EC2::Subnet::Id>"
+    },
+    "GitlabElbTemplate": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the GitLab service's ELB",
+      "Type": "String"
     },
     "GitlabIamTemplate": {
       "AllowedPattern": "^$|^http://.*$|^https://.*$",
@@ -368,24 +347,6 @@
       "Description": "Password of the user that has directory-lookup privileges on the target directory service.",
       "Type": "String"
     },
-    "NoPublicIp": {
-      "AllowedValues": [
-        "false",
-        "true"
-      ],
-      "Default": "true",
-      "Description": "Controls whether to assign the instance a public IP. Recommended to leave at \"true\" _unless_ launching in a public subnet",
-      "Type": "String"
-    },
-    "NoReboot": {
-      "AllowedValues": [
-        "false",
-        "true"
-      ],
-      "Default": "false",
-      "Description": "Controls whether to reboot the instance as the last step of cfn-init execution",
-      "Type": "String"
-    },
     "PgsqlVersion": {
       "AllowedValues": [
         "9.6.3",
@@ -424,10 +385,6 @@
       "Description": "FQDN of public-facing reverse-proxy.",
       "Type": "String"
     },
-    "ProxyPrettyName": {
-      "Description": "A short, human-friendly label to assign to the ELB (no capital letters).",
-      "Type": "String"
-    },
     "PyStache": {
       "Default": "pystache",
       "Description": "Name of preferred pystache RPM.",
@@ -436,10 +393,6 @@
     "RolePrefix": {
       "Description": "Prefix to apply to IAM role to make things a bit prettier (optional).",
       "Type": "String"
-    },
-    "SecurityGroupIds": {
-      "Description": "List of security groups to apply to the ELB.",
-      "Type": "List<AWS::EC2::SecurityGroup::Id>"
     },
     "SecurityGroupTemplate": {
       "AllowedPattern": "^$|^http://.*$|^https://.*$",
@@ -503,7 +456,7 @@
         "Parameters": {
           "AdminPubkeyURL": { "Ref": "AdminPubkeyURL" },
           "AmiId": { "Ref": "AmiId" },
-          "AppVolumeDevice": { "Ref": "AppVolumeDevice" },
+          "AppVolumeDevice": "/dev/xvdf",
           "AppVolumeMountPath": { "Ref": "AppVolumeMountPath" },
           "AppVolumeSize": { "Ref": "AppVolumeSize" },
           "AppVolumeType": { "Ref": "AppVolumeType" },
@@ -552,8 +505,8 @@
           "LdapProxyUser": { "Ref": "LdapProxyUser" },
           "LdapSearchBase": { "Ref": "LdapSearchBase" },
           "LdapUserPassword": { "Ref": "LdapUserPassword" },
-          "NoPublicIp": { "Ref": "NoPublicIp" },
-          "NoReboot": { "Ref": "NoReboot" },
+          "NoPublicIp": "true",
+          "NoReboot": "true",
           "PipIndexFips": { "Ref": "PipIndexFips" },
           "PipRpm": { "Ref": "PipRpm" },
           "ProvisionUser": { "Ref": "ProvisionUser" },
@@ -601,7 +554,7 @@
           "GitLabInstanceId": {
             "Fn::GetAtt": [ "Ec2Res", "Outputs.GitLabInstanceId" ]
           },
-          "GitLabListenPort": { "Ref": "GitLabListenPort" },
+          "GitLabListenPort": "443",
           "GitLabListenerCert": { "Ref":  "GitLabListenerCert" },
           "GitLabPassesSsh": { "Ref": "GitLabPassesSsh" },
           "GitLabServicePort": { "Ref": "GitLabServicePort" },
@@ -611,7 +564,7 @@
               { "Ref": "GitlabElbSubnets" }
             ]
           },
-          "ProxyPrettyName": { "Ref": "ProxyPrettyName" },
+          "ProxyPrettyName": { "Ref": "AWS::StackName" },
           "SecurityGroupIds": {
             "Fn::Join": [
               ",",
