@@ -94,7 +94,7 @@
               [
                 "HTTP:",
                 { "Ref": "GitLabServicePort" },
-                "/login"
+                "/users/sign_in"
               ]
             ]
           },
