@@ -83,10 +83,21 @@
         },
         {
           "Label": {
+            "default": "Proxy (ELB)"
+          },
+          "Parameters": [
+            "GitlabElbSubnets",
+            "GitLabServicePort",
+            "GitLabListenerCert",
+            "GitLabPassesSsh"
+          ]
+        },
+        {
+          "Label": {
             "default": "Miscellaneous"
           },
           "Parameters": [
-            "AwsRegionTld",
+            "ServiceTld",
             "TargetVPC",
             "HaSvcSubnets",
             "RolePrefix"
@@ -130,11 +141,6 @@
       ],
       "Default": "gp2",
       "Description": "Type of EBS volume to create. Ignored if \"AppVolumeDevice\" is blank",
-      "Type": "String"
-    },
-    "AwsRegionTld": {
-      "Default": "amazonaws.com",
-      "Description": "TLD of the Amazon region",
       "Type": "String"
     },
     "BackupCronURL": {
@@ -471,7 +477,7 @@
               [
                 "https://cloudformation",
                 { "Ref": "AWS::Region" },
-                { "Ref": "AwsRegionTld" }
+                { "Ref": "ServiceTld" }
               ]
             ]
           },
@@ -488,7 +494,7 @@
                 ".efs.",
                 { "Ref": "AWS::Region" },
                 ".",
-                { "Ref": "AwsRegionTld" },
+                { "Ref": "ServiceTld" },
                 ":",
                 { "Ref": "GitRepoShareFsPath" }
               ]
