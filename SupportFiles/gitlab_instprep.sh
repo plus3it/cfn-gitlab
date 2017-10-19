@@ -7,6 +7,12 @@
 #################################################################
 PROGNAME=$(basename "${0}")
 LOGFACIL="user.err"
+# Read in template envs we might want to use
+while read -r GLENV
+do
+   # shellcheck disable=SC2163
+   export "${GLENV}"
+done < /etc/cfn/GitLab.envs
 KERNVERS=$(uname -r)
 if [[ ${KERNVERS} == *el7* ]]
 then
@@ -15,7 +21,7 @@ elif [[ ${KERNVERS} == *el6* ]]
 then
   OSDIST="os=el&dist=7"
 fi
-REPOSRC=${REPOSRC:-https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/config_file.repo?${OSDIST}}
+REPOSRC=${GITLAB_YUM_CONFIG:-https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/config_file.repo?${OSDIST}}
 INSTRPMS=()
 DEPRPMS=(
           curl
@@ -27,7 +33,8 @@ FWPORTS=(
           80
           443
         )
-SHARETYPE=${GITLAB_SHARE_TYPE:-UNDEV}
+SHARETYPE=${GITLAB_SHARE_TYPE:-UNDEF}
+
 
 # Log failures and exit
 function err_exit {
@@ -89,6 +96,27 @@ function NfsClientStart {
        systemctl start "${SVC}" && echo "Success!" || \
           err_exit "Failed to start ${SVC}"
     done
+}
+
+##
+## Decide what GitLab version to install
+function InstGitlab {
+   local CPUARCH
+      CPUARCH=$(uname -i)
+   local RPMARR
+      RPMARR=(
+       $(
+         yum --showduplicates list available "${GITLAB_RPM_NAME}" | \
+         tail -1
+        )
+      )
+   
+   if [[ ${#RPMARR[@]} -gt 0 ]]
+   then
+      yum install -qy "${RPMARR[0]/.${CPUARCH}/}-${RPMARR[1]}.${CPUARCH}"
+   else
+      err_exit 'Was not able to determine GitLab version to install'
+   fi
 }
 
 
@@ -204,6 +232,7 @@ REGION="\${GITLAB_AWS_REGION:-UNDEF}"
 DAYSUB="\$(date '+%A')"
 SRCDIR=/var/opt/gitlab/backups/
 
+# Set up flexible logging
 function err_exit {
    echo "\${1}"
    logger -t "\${PROGNAME}" -p \${LOGFACIL} "\${1}"
@@ -251,6 +280,5 @@ echo "Shut off FIPS-checking in embedded Chef Gem"
 
 # Do base-install of GitLab RPM
 printf "Installing GitLab CE"
-yum install -y gitlab-ce || \
-   err_exit "Install failed."
+InstGitlab && \
 echo "Install succeeded. Gitlab must now be configured"
