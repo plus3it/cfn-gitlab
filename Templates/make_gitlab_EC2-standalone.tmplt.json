@@ -55,11 +55,6 @@
       "Description": "S3 Bucket to host backups of GitLab config-data",
       "Type": "String"
     },
-    "BackupCronURL": {
-      "Description": "URL to the GitLab backup cron-file",
-      "Type": "String",
-      "AllowedPattern": "^$|^http://.*$|^https://.*$"
-    },
     "BackupFolder": {
       "Description": "Folder in S3 Bucket to host backups of GitLab config-data",
       "Type": "String"
@@ -85,6 +80,11 @@
       "Description": "URL of the script that preps the OS to host GitLab",
       "Type": "String",
       "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$"
+    },
+    "GitLabRpmName": {
+      "Description": "Name of GitLab RPM to install. Include release version if 'other-than-latest' is desired. Example values would be: gitlab-ce, gitlab-ce-X.Y.Z",
+      "Type": "String",
+      "AllowedPattern": "^gitlab-.*$"
     },
     "GitRepoShareType": {
       "AllowedValues": [
@@ -396,7 +396,6 @@
             "default": "S3 Backups"
           },
           "Parameters": [
-            "BackupCronURL",
             "BackupBucket",
             "BackupFolder"
           ]
@@ -443,6 +442,7 @@
             "default": "Miscellaneous Parameters"
           },
           "Parameters": [
+            "GitLabRpmName",
             "GitLabPrepScript",
             "GitLabConfScript",
             "EpelRepo",
@@ -809,6 +809,9 @@
                        "\n",
               "      export GITLAB_AWS_REGION=",
                          { "Ref" : "AWS::Region" },
+                       "\n",
+              "      export GITLAB_RPM_NAME=",
+                         { "Ref" : "GitLabRpmName" },
                        "\n",
               "      \n",
               "      # Helper function\n",

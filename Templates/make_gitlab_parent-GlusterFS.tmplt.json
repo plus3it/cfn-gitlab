@@ -83,10 +83,10 @@
           },
           "Parameters": [
             "ProxyName",
+            "GitLabRpmName",
             "GitLabPrepScript",
             "GitLabConfScript",
             "BackupFolder",
-            "BackupCronURL",
             "LdapHost",
             "LdapPort",
             "LdapCrypt",
@@ -128,11 +128,6 @@
       "MaxValue": "16384",
       "MinValue": "5",
       "Type": "Number"
-    },
-    "BackupCronURL": {
-      "AllowedPattern": "^$|^http://.*$|^https://.*$",
-      "Description": "URL to the GitLab backup cron-file",
-      "Type": "String"
     },
     "BackupFolder": {
       "Description": "Folder in S3 Bucket to host backups of GitLab config-data",
@@ -236,6 +231,11 @@
       "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$",
       "Description": "URL of the script that preps the OS to host GitLab",
       "Type": "String"
+    },
+    "GitLabRpmName": {
+      "Description": "Name of GitLab RPM to install. Include release version if 'other-than-latest' is desired. Example values would be: gitlab-ce, gitlab-ce-X.Y.Z",
+      "Type": "String",
+      "AllowedPattern": "^gitlab-.*$"
     },
     "GitRepoShareFsPath": {
       "Description": "Volume-path from the shared-volume server.",
@@ -455,188 +455,82 @@
     "Ec2Res": {
       "Properties": {
         "Parameters": {
-          "AdminPubkeyURL": {
-            "Ref": "AdminPubkeyURL"
-          },
-          "AmiId": {
-            "Ref": "AmiId"
-          },
+          "AdminPubkeyURL": { "Ref": "AdminPubkeyURL" },
+          "AmiId": { "Ref": "AmiId" },
           "AppVolumeDevice": "/dev/xvdf",
-          "AppVolumeMountPath": {
-            "Ref": "AppVolumeMountPath"
-          },
-          "AppVolumeSize": {
-            "Ref": "AppVolumeSize"
-          },
+          "AppVolumeMountPath": { "Ref": "AppVolumeMountPath" },
+          "AppVolumeSize": { "Ref": "AppVolumeSize" },
           "AppVolumeType": "gp2",
           "BackupBucket": {
-            "Fn::GetAtt": [
-              "S3Res",
-              "Outputs.GitlabBucketArn"
-            ]
-          },
-          "BackupCronURL": {
-            "Ref": "BackupCronURL"
+            "Fn::GetAtt": [ "S3Res", "Outputs.GitlabBucketArn" ]
           },
           "BackupFolder": "GitLab-Backups",
-          "CfnEndpointUrl": {
-            "Ref": "CfnEndpointUrl"
-          },
-          "DnsSuffix": {
-            "Ref": "DnsSuffix"
-          },
-          "EpelRepo": {
-            "Ref": "EpelRepo"
-          },
-          "GitLabConfScript": {
-            "Ref": "GitLabConfScript"
-          },
-          "GitLabPrepScript": {
-            "Ref": "GitLabPrepScript"
-          },
+          "CfnEndpointUrl": { "Ref": "CfnEndpointUrl" },
+          "DnsSuffix": { "Ref": "DnsSuffix" },
+          "EpelRepo": { "Ref": "EpelRepo" },
+          "GitLabConfScript": { "Ref": "GitLabConfScript" },
+          "GitLabPrepScript": { "Ref": "GitLabPrepScript" },
+          "GitLabRpmName": { "Ref": "GitLabRpmName" },
           "GitRepoShareType": "glusterfs",
           "GitRepoShareUri": {
             "Fn::Join": [
-              "",
+              ":",
               [
-                {
-                  "Fn::GetAtt": [
-                    "GfsN1Res",
-                    "Outputs.GfsNodeIp"
-                  ]
-                },
-                ":",
-                {
-                  "Ref": "GitRepoShareFsPath"
-                }
+                { "Fn::GetAtt": [ "GfsN1Res", "Outputs.GfsNodeIp" ] },
+                { "Ref": "GitRepoShareFsPath" }
               ]
             ]
           },
           "InstanceRole": {
-            "Fn::GetAtt": [
-              "IamRes",
-              "Outputs.InstanceRoleProfile"
-            ]
+            "Fn::GetAtt": [ "IamRes", "Outputs.InstanceRoleProfile" ]
           },
-          "InstanceType": {
-            "Ref": "InstanceType"
-          },
-          "KeyPairName": {
-            "Ref": "KeyPairName"
-          },
-          "LdapCrypt": {
-            "Ref": "LdapCrypt"
-          },
-          "LdapHost": {
-            "Ref": "LdapHost"
-          },
-          "LdapPort": {
-            "Ref": "LdapPort"
-          },
-          "LdapProxyUser": {
-            "Ref": "LdapProxyUser"
-          },
-          "LdapSearchBase": {
-            "Ref": "LdapSearchBase"
-          },
-          "LdapUserPassword": {
-            "Ref": "LdapUserPassword"
-          },
-          "NoPublicIp": {
-            "Ref": "NoPublicIp"
-          },
+          "InstanceType": { "Ref": "InstanceType" },
+          "KeyPairName": { "Ref": "KeyPairName" },
+          "LdapCrypt": { "Ref": "LdapCrypt" },
+          "LdapHost": { "Ref": "LdapHost" },
+          "LdapPort": { "Ref": "LdapPort" },
+          "LdapProxyUser": { "Ref": "LdapProxyUser" },
+          "LdapSearchBase": { "Ref": "LdapSearchBase" },
+          "LdapUserPassword": { "Ref": "LdapUserPassword" },
+          "NoPublicIp": { "Ref": "NoPublicIp" },
           "NoReboot": "true",
-          "PipIndexFips": {
-            "Ref": "PipIndexFips"
-          },
-          "PipRpm": {
-            "Ref": "PipRpm"
-          },
-          "ProvisionUser": {
-            "Ref": "ProvisionUser"
-          },
-          "ProxyName": {
-            "Ref": "ProxyName"
-          },
-          "PyStache": {
-            "Ref": "PyStache"
-          },
+          "PipIndexFips": { "Ref": "PipIndexFips" },
+          "PipRpm": { "Ref": "PipRpm" },
+          "ProvisionUser": { "Ref": "ProvisionUser" },
+          "ProxyName": { "Ref": "ProxyName" },
+          "PyStache": { "Ref": "PyStache" },
           "RdsDbAdmin": {
-            "Fn::GetAtt": [
-              "RdsRes",
-              "Outputs.RdsDbUserName"
-            ]
+            "Fn::GetAtt": [ "RdsRes", "Outputs.RdsDbUserName" ]
           },
           "RdsDbHost": {
-            "Fn::GetAtt": [
-              "RdsRes",
-              "Outputs.RdsEndpointAddress"
-            ]
+            "Fn::GetAtt": [ "RdsRes", "Outputs.RdsEndpointAddress" ]
           },
           "RdsDbInstance": {
-            "Fn::GetAtt": [
-              "RdsRes",
-              "Outputs.RdsDbInstanceName"
-            ]
+            "Fn::GetAtt": [ "RdsRes", "Outputs.RdsDbInstanceName" ]
           },
           "RdsDbPasswd": {
-            "Fn::GetAtt": [
-              "RdsRes",
-              "Outputs.RdsDbUserPass"
-            ]
+            "Fn::GetAtt": [ "RdsRes", "Outputs.RdsDbUserPass" ]
           },
           "SecurityGroupIds": {
             "Fn::Join": [
               ",",
               [
-                {
-                  "Fn::GetAtt": [
-                    "SgRes",
-                    "Outputs.AppSg"
-                  ]
-                },
-                {
-                  "Fn::GetAtt": [
-                    "SgRes",
-                    "Outputs.NasSg"
-                  ]
-                },
-                {
-                  "Fn::GetAtt": [
-                    "SgRes",
-                    "Outputs.RdsSg"
-                  ]
-                }
+                { "Fn::GetAtt": [ "SgRes", "Outputs.AppSg" ] },
+                { "Fn::GetAtt": [ "SgRes", "Outputs.NasSg" ] },
+                { "Fn::GetAtt": [ "SgRes", "Outputs.RdsSg" ] }
               ]
             ]
           },
-          "ServerHostname": {
-            "Ref": "ServerHostname"
-          },
-          "SmtpAuthSender": {
-            "Ref": "SmtpAuthSender"
-          },
-          "SmtpMessageDomain": {
-            "Ref": "SmtpMessageDomain"
-          },
-          "SmtpNoticeUser": {
-            "Ref": "SmtpNoticeUser"
-          },
-          "SmtpRelayFqdn": {
-            "Ref": "SmtpRelayFqdn"
-          },
-          "SmtpRelayPort": {
-            "Ref": "SmtpRelayPort"
-          },
-          "SmtpSenderPass": {
-            "Ref": "SmtpSenderPass"
-          },
-          "SubNetId": {
-            "Ref": "SubNetId"
-          }
+          "ServerHostname": { "Ref": "ServerHostname" },
+          "SmtpAuthSender": { "Ref": "SmtpAuthSender" },
+          "SmtpMessageDomain": { "Ref": "SmtpMessageDomain" },
+          "SmtpNoticeUser": { "Ref": "SmtpNoticeUser" },
+          "SmtpRelayFqdn": { "Ref": "SmtpRelayFqdn" },
+          "SmtpRelayPort": { "Ref": "SmtpRelayPort" },
+          "SmtpSenderPass": { "Ref": "SmtpSenderPass" },
+          "SubNetId": { "Ref": "SubNetId" }
         },
-        "TemplateURL": {
-          "Ref": "GitlabEc2Template"
+        "TemplateURL": { "Ref": "GitlabEc2Template"
         },
         "TimeoutInMinutes": "10"
       },

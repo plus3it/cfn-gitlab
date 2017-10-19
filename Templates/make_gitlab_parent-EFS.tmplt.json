@@ -60,9 +60,9 @@
           },
           "Parameters": [
             "ProxyName",
+            "GitLabRpmName",
             "GitLabPrepScript",
             "GitLabConfScript",
-            "BackupCronURL",
             "GitlabBucket",
             "BackupFolder",
             "GitRepoShareFsPath",
@@ -141,11 +141,6 @@
       ],
       "Default": "gp2",
       "Description": "Type of EBS volume to create. Ignored if \"AppVolumeDevice\" is blank",
-      "Type": "String"
-    },
-    "BackupCronURL": {
-      "AllowedPattern": "^$|^http://.*$|^https://.*$",
-      "Description": "URL to the GitLab backup cron-file",
       "Type": "String"
     },
     "BackupFolder": {
@@ -236,6 +231,11 @@
       "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$",
       "Description": "URL of the script that preps the OS to host GitLab",
       "Type": "String"
+    },
+    "GitLabRpmName": {
+      "Description": "Name of GitLab RPM to install. Include release version if 'other-than-latest' is desired. Example values would be: gitlab-ce, gitlab-ce-X.Y.Z",
+      "Type": "String",
+      "AllowedPattern": "^gitlab-.*$"
     },
     "GitLabServicePort": {
       "Default": "80",
@@ -469,7 +469,6 @@
           "BackupBucket": {
             "Fn::GetAtt": [ "S3Res", "Outputs.GitlabBucketName" ]
           },
-          "BackupCronURL": { "Ref": "BackupCronURL" },
           "BackupFolder": { "Ref": "BackupFolder" },
           "CfnEndpointUrl": {
             "Fn::Join": [
@@ -485,6 +484,7 @@
           "EpelRepo": { "Ref": "EpelRepo" },
           "GitLabConfScript": { "Ref": "GitLabConfScript" },
           "GitLabPrepScript": { "Ref": "GitLabPrepScript" },
+          "GitLabRpmName": { "Ref": "GitLabRpmName" },
           "GitRepoShareType": { "Ref": "GitRepoShareType" },
           "GitRepoShareUri": {
             "Fn::Join": [
