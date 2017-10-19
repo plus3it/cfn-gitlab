@@ -86,6 +86,12 @@
       "Type": "String",
       "AllowedPattern": "^gitlab-.*$"
     },
+    "GitLabRpmSourceUri": {
+      "AllowedPattern": "^http://.*$|^https://.*$",
+      "Description": "Url from which to download the Yum repository-definition for GitLab.",
+      "Default": "https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/config_file.repo?os=el&dist=7",
+      "Type": "String"
+    },
     "GitRepoShareType": {
       "AllowedValues": [
         "glusterfs",
@@ -812,6 +818,9 @@
                        "\n",
               "      export GITLAB_RPM_NAME=",
                          { "Ref" : "GitLabRpmName" },
+                       "\n",
+              "      export GITLAB_YUM_CONFIG=",
+                         { "Ref" : "GitLabRpmSourceUri" },
                        "\n",
               "      \n",
               "      # Helper function\n",
