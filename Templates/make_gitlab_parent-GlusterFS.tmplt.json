@@ -237,6 +237,12 @@
       "Type": "String",
       "AllowedPattern": "^gitlab-.*$"
     },
+    "GitLabRpmSourceUri": {
+      "AllowedPattern": "^http://.*$|^https://.*$",
+      "Description": "Url from which to download the Yum repository-definition for GitLab.",
+      "Default": "https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/config_file.repo?os=el&dist=7",
+      "Type": "String"
+    },
     "GitRepoShareFsPath": {
       "Description": "Volume-path from the shared-volume server.",
       "Type": "String"
@@ -471,6 +477,7 @@
           "GitLabConfScript": { "Ref": "GitLabConfScript" },
           "GitLabPrepScript": { "Ref": "GitLabPrepScript" },
           "GitLabRpmName": { "Ref": "GitLabRpmName" },
+          "GitLabRpmSourceUri": { "Ref": "GitLabRpmSourceUri" },
           "GitRepoShareType": "glusterfs",
           "GitRepoShareUri": {
             "Fn::Join": [

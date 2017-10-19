@@ -237,6 +237,12 @@
       "Type": "String",
       "AllowedPattern": "^gitlab-.*$"
     },
+    "GitLabRpmSourceUri": {
+      "AllowedPattern": "^http://.*$|^https://.*$",
+      "Description": "Url from which to download the Yum repository-definition for GitLab.",
+      "Default": "https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/config_file.repo?os=el&dist=7",
+      "Type": "String"
+    },
     "GitLabServicePort": {
       "Default": "80",
       "Description": "TCP Port number that the GitLab host listens to.",
@@ -485,6 +491,7 @@
           "GitLabConfScript": { "Ref": "GitLabConfScript" },
           "GitLabPrepScript": { "Ref": "GitLabPrepScript" },
           "GitLabRpmName": { "Ref": "GitLabRpmName" },
+          "GitLabRpmSourceUri": { "Ref": "GitLabRpmSourceUri" },
           "GitRepoShareType": { "Ref": "GitRepoShareType" },
           "GitRepoShareUri": {
             "Fn::Join": [
