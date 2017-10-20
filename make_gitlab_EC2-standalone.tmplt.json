@@ -11,24 +11,9 @@
         { "Fn::Equals": [ { "Ref": "NoPublicIp" }, "true" ] }
       ]
     },
-    "AssignStaticPrivateIp": {
-      "Fn::Not": [
-        { "Fn::Equals": [ { "Ref": "PrivateIp" }, "" ] }
-      ]
-    },
     "CreateAppVolume": {
       "Fn::Not": [
         { "Fn::Equals": [ { "Ref": "AppVolumeDevice" }, "" ] }
-      ]
-    },
-    "ExecuteAppScript": {
-      "Fn::Not": [
-        { "Fn::Equals": [ { "Ref": "AppScriptUrl" }, "" ] }
-      ]
-    },
-    "InstallUpdates": {
-      "Fn::Not": [
-        { "Fn::Equals": [ { "Ref": "NoUpdates" }, "true" ] }
       ]
     },
     "Reboot": {
@@ -36,34 +21,14 @@
         { "Fn::Equals": [ { "Ref": "NoReboot" }, "true" ] }
       ]
     },
-    "UseAdminGroups": {
-      "Fn::Not": [
-        { "Fn::Equals": [ { "Ref": "WatchmakerAdminGroups" }, "" ] }
-      ]
-    },
-    "UseAdminUsers": {
-      "Fn::Not": [
-        { "Fn::Equals": [ { "Ref": "WatchmakerAdminUsers" }, "" ] }
-      ]
-    },
     "UseCfnUrl": {
       "Fn::Not": [
         { "Fn::Equals": [ { "Ref": "CfnEndpointUrl" }, "" ] }
       ]
     },
-    "UseComputerName": {
-      "Fn::Not": [
-        { "Fn::Equals": [ { "Ref": "WatchmakerComputerName" }, "" ] }
-      ]
-    },
     "UseEnvironment": {
       "Fn::Not": [
         { "Fn::Equals": [ { "Ref": "WatchmakerEnvironment" }, "" ] }
-      ]
-    },
-    "UseOuPath": {
-      "Fn::Not": [
-        { "Fn::Equals": [ { "Ref": "WatchmakerOuPath" }, "" ] }
       ]
     },
     "UseS3Source": {
@@ -86,92 +51,12 @@
     }
   },
   "Metadata": {
-    "AWS::CloudFormation::Interface": {
-      "ParameterGroups": [
-        {
-          "Label": {
-            "default": "EC2 Instance Configuration"
-          },
-          "Parameters": [
-            "AmiId",
-            "AmiDistro",
-            "InstanceType",
-            "InstanceRole",
-            "KeyPairName",
-            "NoPublicIp",
-            "NoReboot",
-            "NoUpdates",
-            "SecurityGroupIds"
-          ]
-        },
-        {
-          "Label": {
-            "default": "EC2 Watchmaker Configuration"
-          },
-          "Parameters": [
-            "PypiIndexUrl",
-            "WatchmakerConfig",
-            "WatchmakerEnvironment",
-            "WatchmakerOuPath",
-            "WatchmakerComputerName",
-            "WatchmakerAdminGroups",
-            "WatchmakerAdminUsers",
-            "WatchmakerS3Source"
-          ]
-        },
-        {
-          "Label": {
-            "default": "EC2 Application Configuration"
-          },
-          "Parameters": [
-            "AppScriptUrl",
-            "AppScriptParams",
-            "AppScriptShell"
-          ]
-        },
-        {
-          "Label": {
-            "default": "EC2 Application EBS Volume"
-          },
-          "Parameters": [
-            "AppVolumeDevice",
-            "AppVolumeMountPath",
-            "AppVolumeSize",
-            "AppVolumeType"
-          ]
-        },
-        {
-          "Label": {
-            "default": "Network Configuration"
-          },
-          "Parameters": [
-            "PrivateIp",
-            "SubnetId"
-          ]
-        },
-        {
-          "Label": {
-            "default": "CloudFormation Configuration"
-          },
-          "Parameters": [
-            "CfnEndpointUrl",
-            "CfnGetPipUrl",
-            "CfnBootstrapUtilsUrl",
-            "ToggleCfnInitUpdate"
-          ]
-        }
-      ],
-      "ParameterLabels": {
-        "ToggleCfnInitUpdate": {
-          "default": "Force Cfn Init Update"
-        }
-      }
-    }
+    "AWS::CloudFormation::Interface": {}
   },
   "Outputs": {
-    "WatchmakerInstanceId": {
+    "GitlabInstanceId": {
       "Description": "Instance ID",
-      "Value": { "Ref": "WatchmakerInstance" }
+      "Value": { "Ref": "GitLabHost" }
     }
   },
   "Parameters": {
@@ -232,13 +117,19 @@
       "Description": "Folder in S3 Bucket to host backups of GitLab config-data",
       "Type": "String"
     },
-    "DnsSuffix" : {
-      "Description" : "Suffix for GitLab's hostname and DNS record",
+    "CfnEndpointUrl": {
+      "Description": "URL to the CloudFormation Endpoint. e.g. https://cloudformation.us-east-1.amazonaws.com",
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^$|^http://.*$|^https://.*$"
+    },
+    "DnsSuffix": {
+      "Description": "Suffix for GitLab's hostname and DNS record",
       "Type": "String",
       "ConstraintDescription": "An alphanumeric string to complete the domain portion of the instance's FQDN."
     },
     "EpelRepo": {
-      "Description" : "Name of network's EPEL repo.",
+      "Description": "Name of network's EPEL repo.",
       "Type": "String",
       "Default": "epel",
       "AllowedPattern": "^[a-z][a-z0-9-]*$",
@@ -356,13 +247,13 @@
       ]
     },
     "PipIndexFips": {
-      "Description" : "URL of pip index  that is compatible with FIPS 140-2 requirements.",
+      "Description": "URL of pip index  that is compatible with FIPS 140-2 requirements.",
       "Type": "String",
       "Default": "https://pypi.org/simple/",
       "AllowedPattern": "^$|^http://.*$|^https://.*$"
     },
     "PipRpm": {
-      "Description" : "Name of preferred pip RPM.",
+      "Description": "Name of preferred pip RPM.",
       "Type": "String",
       "Default": "python2-pip"
     },
@@ -374,62 +265,62 @@
       "ConstraintDescription": "Alphanumeric string between 6 and 12 characters."
     },
     "ProxyName": {
-      "Description" : "FQDN of public-facing reverse-proxy.",
+      "Description": "FQDN of public-facing reverse-proxy.",
       "Type": "String",
       "AllowedPattern": "^[a-z][a-z0-9.-]*[a-z]$",
       "ConstraintDescription": "Alphanumeric string DNS FQDN representing the RDS end-point name."
     },
     "PyStache": {
-      "Description" : "Name of preferred pystache RPM.",
+      "Description": "Name of preferred pystache RPM.",
       "Type": "String",
       "Default": "pystache"
     },
     "RdsDbHost": {
-      "Description" : "RDS End-point Name (FQDN)",
+      "Description": "RDS End-point Name (FQDN)",
       "Type": "String",
       "AllowedPattern": "^[a-zA-Z0-9.-]*$",
       "ConstraintDescription": "Alphanumeric string DNS FQDN representing the RDS end-point name."
     },
     "RdsDbInstance": {
-      "Description" : "RDS database name.",
+      "Description": "RDS database name.",
       "Type": "String",
       "AllowedPattern": "^[a-z][a-zA-Z0-9_]*$",
       "ConstraintDescription": "Alphanumeric string representing the RDS database instance."
     },
     "RdsDbAdmin": {
-      "Description" : "RDS database-user name.",
+      "Description": "RDS database-user name.",
       "Type": "String",
       "AllowedPattern": "^[a-z]*$",
       "ConstraintDescription": "Alphanumeric string representing the RDS database-user name."
     },
     "RdsDbPasswd": {
-      "Description" : "RDS database-user login password.",
+      "Description": "RDS database-user login password.",
       "Type": "String"
     },
     "SecurityGroupIds": {
       "Description": "List of security groups to apply to the instance(s)",
       "Type": "List<AWS::EC2::SecurityGroup::Id>"
     },
-    "ServerHostname" : {
-      "Description" : "Node-name for GitLab's hostname and DNS record",
+    "ServerHostname": {
+      "Description": "Node-name for GitLab's hostname and DNS record",
       "Type": "String",
       "Default": "gitlab",
       "ConstraintDescription": "An alphanumeric string to complete the hostname portion of the instance's FQDN."
     },
     "SmtpAuthSender": {
-      "Description" : "Authorized SMTP-relay sender ID.",
+      "Description": "Authorized SMTP-relay sender ID.",
       "Type": "String"
     },
     "SmtpMessageDomain": {
-      "Description" : "@DOMAIN value for notification mails.",
+      "Description": "@DOMAIN value for notification mails.",
       "Type": "String"
     },
     "SmtpNoticeUser": {
-      "Description" : "User to set in outbound messages \"From:\" address.",
+      "Description": "User to set in outbound messages \"From:\" address.",
       "Type": "String"
     },
     "SmtpRelayFqdn": {
-      "Description" : "FQDN of the SMTP-relay host.",
+      "Description": "FQDN of the SMTP-relay host.",
       "Type": "String"
     },
     "SmtpRelayPort": {
@@ -439,26 +330,46 @@
         "587"
       ],
       "Default": "465",
-      "Description" : "Listener-port of the SMTP-relay host.",
+      "Description": "Listener-port of the SMTP-relay host.",
       "Type": "String"
     },
     "SmtpSenderPass": {
-      "Description" : "Password or the authorized SMTP-relay sender ID.",
+      "Description": "Password or the authorized SMTP-relay sender ID.",
       "Type": "String"
     },
     "SubnetId": {
       "Description": "Subnet to associate to the Instance",
       "Type": "AWS::EC2::Subnet::Id"
     },
-    "CfnEndpointUrl": {
-      "Description": "URL to the CloudFormation Endpoint. e.g. https://cloudformation.us-east-1.amazonaws.com",
+    "WatchmakerConfig": {
+      "Description": "(Optional) URL to a Watchmaker config file",
       "Type": "String",
       "Default": "",
-      "AllowedPattern": "^$|^http://.*$|^https://.*$"
+      "AllowedPattern": "^$|^http[s]?://.*$"
+    },
+    "WatchmakerEnvironment": {
+      "Description": "Environment in which the instance is being deployed",
+      "Type": "String",
+      "Default": "",
+      "AllowedValues": [
+        "",
+        "dev",
+        "test",
+        "prod"
+      ]
+    },
+    "WatchmakerS3Source": {
+      "Description": "Flag that tells watchmaker to use its instance role to retrieve watchmaker content from S3",
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": [
+        "false",
+        "true"
+      ]
     }
   },
   "Resources": {
-    "WatchmakerInstance": {
+    "GitLabHost": {
       "CreationPolicy": {
         "ResourceSignal": {
           "Count": "1",
@@ -484,13 +395,6 @@
               "setup",
               "watchmaker-install",
               "watchmaker-launch",
-              {
-                "Fn::If": [
-                  "ExecuteAppScript",
-                  "make-app",
-                  { "Ref": "AWS::NoValue" }
-                ]
-              },
               "finalize",
               {
                 "Fn::If": [
@@ -502,22 +406,8 @@
             ],
             "update": [
               "setup",
-              {
-                "Fn::If": [
-                  "InstallUpdates",
-                  "install-updates",
-                  { "Ref": "AWS::NoValue" }
-                ]
-              },
               "watchmaker-install",
               "watchmaker-update",
-              {
-                "Fn::If": [
-                  "ExecuteAppScript",
-                  "make-app",
-                  { "Ref": "AWS::NoValue" }
-                ]
-              },
               "finalize",
               {
                 "Fn::If": [
@@ -538,22 +428,7 @@
                       "/opt/aws/bin/cfn-signal -e 0",
                       " --stack ",
                       { "Ref": "AWS::StackName" },
-                      " --resource WatchmakerInstance",
-                      {
-                        "Fn::If": [
-                          "AssignInstanceRole",
-                          {
-                            "Fn::Join": [
-                              "",
-                              [
-                                " --role ",
-                                { "Ref": "InstanceRole" }
-                              ]
-                            ]
-                          },
-                          ""
-                        ]
-                      },
+                      " --resource GitLabHost",
                       {
                         "Fn::If": [
                           "UseCfnUrl",
@@ -586,31 +461,6 @@
               }
             }
           },
-          "make-app": {
-            "commands": {
-              "10-make-app": {
-                "command": {
-                  "Fn::Join": [
-                    "",
-                    [
-                      { "Ref": "AppScriptShell" },
-                      " /etc/cfn/scripts/make-app ",
-                      { "Ref": "AppScriptParams" }
-                    ]
-                  ]
-                }
-              }
-            },
-            "files": {
-              "/etc/cfn/scripts/make-app": {
-                "authentication": "Ec2IamRole",
-                "group": "root",
-                "mode": "000700",
-                "owner": "root",
-                "source": { "Ref": "AppScriptUrl" }
-              }
-            }
-          },
           "reboot": {
             "commands": {
               "10-reboot": {
@@ -632,22 +482,6 @@
                       "region=",
                       { "Ref": "AWS::Region" },
                       "\n",
-                      {
-                        "Fn::If": [
-                          "AssignInstanceRole",
-                          {
-                            "Fn::Join": [
-                              "",
-                              [
-                                "role=",
-                                { "Ref": "InstanceRole" },
-                                "\n"
-                              ]
-                            ]
-                          },
-                          ""
-                        ]
-                      },
                       {
                         "Fn::If": [
                           "UseCfnUrl",
@@ -682,26 +516,11 @@
                     [
                       "[cfn-auto-reloader-hook]\n",
                       "triggers=post.update\n",
-                      "path=Resources.WatchmakerInstance.Metadata\n",
+                      "path=Resources.GitLabHost.Metadata\n",
                       "action=/opt/aws/bin/cfn-init -v -c update",
                       " --stack ",
                       { "Ref": "AWS::StackName" },
-                      " --resource WatchmakerInstance",
-                      {
-                        "Fn::If": [
-                          "AssignInstanceRole",
-                          {
-                            "Fn::Join": [
-                              "",
-                              [
-                                " --role ",
-                                { "Ref": "InstanceRole" }
-                              ]
-                            ]
-                          },
-                          ""
-                        ]
-                      },
+                      " --resource GitLabHost",
                       {
                         "Fn::If": [
                           "UseCfnUrl",
@@ -735,7 +554,7 @@
                     [
                       "#!/bin/bash\n\n",
                       "PYPI_URL=",
-                      { "Ref": "PypiIndexUrl" },
+                      { "Ref": "PipIndexFips" },
                       "\n",
                       "pip install --index-url=\"$PYPI_URL\" wheel==0.29.0\n",
                       "pip install",
@@ -813,70 +632,6 @@
                       },
                       {
                         "Fn::If": [
-                          "UseOuPath",
-                          {
-                            "Fn::Join": [
-                              "",
-                              [
-                                " --ou-path \"",
-                                { "Ref": "WatchmakerOuPath" },
-                                "\""
-                              ]
-                            ]
-                          },
-                          ""
-                        ]
-                      },
-                      {
-                        "Fn::If": [
-                          "UseComputerName",
-                          {
-                            "Fn::Join": [
-                              "",
-                              [
-                                " --computer-name \"",
-                                { "Ref": "WatchmakerComputerName" },
-                                "\""
-                              ]
-                            ]
-                          },
-                          ""
-                        ]
-                      },
-                      {
-                        "Fn::If": [
-                          "UseAdminGroups",
-                          {
-                            "Fn::Join": [
-                              "",
-                              [
-                                " --admin-groups \"",
-                                { "Ref": "WatchmakerAdminGroups" },
-                                "\""
-                              ]
-                            ]
-                          },
-                          ""
-                        ]
-                      },
-                      {
-                        "Fn::If": [
-                          "UseAdminUsers",
-                          {
-                            "Fn::Join": [
-                              "",
-                              [
-                                " --admin-users \"",
-                                { "Ref": "WatchmakerAdminUsers" },
-                                "\""
-                              ]
-                            ]
-                          },
-                          ""
-                        ]
-                      },
-                      {
-                        "Fn::If": [
                           "UseS3Source",
                           " --s3-source",
                           ""
@@ -933,70 +688,6 @@
                       },
                       {
                         "Fn::If": [
-                          "UseOuPath",
-                          {
-                            "Fn::Join": [
-                              "",
-                              [
-                                " --oupath \"",
-                                { "Ref": "WatchmakerOuPath" },
-                                "\""
-                              ]
-                            ]
-                          },
-                          ""
-                        ]
-                      },
-                      {
-                        "Fn::If": [
-                          "UseComputerName",
-                          {
-                            "Fn::Join": [
-                              "",
-                              [
-                                " --computer-name \"",
-                                { "Ref": "WatchmakerComputerName" },
-                                "\""
-                              ]
-                            ]
-                          },
-                          ""
-                        ]
-                      },
-                      {
-                        "Fn::If": [
-                          "UseAdminGroups",
-                          {
-                            "Fn::Join": [
-                              "",
-                              [
-                                " --admin-groups \"",
-                                { "Ref": "WatchmakerAdminGroups" },
-                                "\""
-                              ]
-                            ]
-                          },
-                          ""
-                        ]
-                      },
-                      {
-                        "Fn::If": [
-                          "UseAdminUsers",
-                          {
-                            "Fn::Join": [
-                              "",
-                              [
-                                " --admin-users \"",
-                                { "Ref": "WatchmakerAdminUsers" },
-                                "\""
-                              ]
-                            ]
-                          },
-                          ""
-                        ]
-                      },
-                      {
-                        "Fn::If": [
                           "UseS3Source",
                           " --s3-source",
                           ""
@@ -1008,27 +699,12 @@
               }
             }
           }
-        },
-        "ToggleCfnInitUpdate": { "Ref": "ToggleCfnInitUpdate" }
+        }
       },
       "Properties": {
         "BlockDeviceMappings": [
           {
-            "DeviceName": {
-              "Fn::Join": [
-                "",
-                [
-                  "/dev/",
-                  {
-                    "Fn::FindInMap": [
-                      "Distro2RootDevice",
-                      { "Ref": "AmiDistro" },
-                      "DeviceName"
-                    ]
-                  }
-                ]
-              ]
-            },
+            "DeviceName": "/dev/sda1",
             "Ebs": {
               "DeleteOnTermination": "true",
               "VolumeType": "gp2"
@@ -1070,13 +746,6 @@
             },
             "DeviceIndex": "0",
             "GroupSet": { "Ref": "SecurityGroupIds" },
-            "PrivateIpAddress": {
-              "Fn::If": [
-                "AssignStaticPrivateIp",
-                { "Ref": "PrivateIp" },
-                { "Ref": "AWS::NoValue" }
-              ]
-            },
             "SubnetId": { "Ref": "SubnetId" }
           }
         ],
@@ -1107,12 +776,12 @@
                 "\n",
                 "\n",
                 "hostname: ",
-                  { "Ref" : "ServerHostname" },
+                  { "Ref": "ServerHostname" },
                 "\n",
                 "fqdn: ",
-                  { "Ref" : "ServerHostname" },
+                  { "Ref": "ServerHostname" },
                   ".",
-                  { "Ref" : "DnsSuffix" },
+                  { "Ref": "DnsSuffix" },
                 "\n",
                 "runcmd:\n",
                 "  - |\n",
@@ -1140,41 +809,25 @@
                 "      \n",
                 "      # Upgrade pip and setuptools\n",
                 "      PYPI_URL=",
-                       { "Ref": "PypiIndexUrl" },
+                       { "Ref": "PipIndexFips" },
                        "\n",
                 "      pip install --index-url=\"$PYPI_URL\"",
                        " --upgrade pip setuptools\n\n",
-                "      pip install --index-url=\"$PYPI_URL\"",
-                       " --upgrade pyopenssl ndg-httpsclient pyasn1\n\n",
-                "      \n",
                 "      # Update cfn-bootstrapper hash method\n",
+                "      printf 'Updating CFn hash-check method... '\n",
                 "      PYVERS=$(python -c 'import sys;",
                        " version=sys.version_info[:2];",
                        " print(\"{0}.{1}\".format(*version))')\n",
                 "      sed -i '/^[ \\t][ \\t]*self._etag/s/etag$/None/'",
                        " /usr/lib/python${PYVERS}/site-packages/cfnbootstrap",
-                        "/util.py\n",
+                        "/util.py && echo 'Success' || ",
+                        "err_exit 'Failed updating CFn hash-method'\n",
                 "      \n",
                 "      # Initialize the CFn subsystems\n",
                 "      /opt/aws/bin/cfn-init -v -c launch",
                        " --stack ",
                        { "Ref": "AWS::StackName" },
                        " --resource GitLabHost",
-                       {
-                         "Fn::If": [
-                           "AssignInstanceRole",
-                           {
-                             "Fn::Join": [
-                               "",
-                               [
-                                 " --role ",
-                                 { "Ref": "InstanceRole" }
-                               ]
-                             ]
-                           },
-                           ""
-                         ]
-                       },
                        {
                          "Fn::If": [
                            "UseCfnUrl",
@@ -1197,22 +850,7 @@
                        " /opt/aws/bin/cfn-signal -e 1",
                        "  --stack ",
                        { "Ref": "AWS::StackName" },
-                       "  --resource WatchmakerInstance",
-                       {
-                         "Fn::If": [
-                           "AssignInstanceRole",
-                           {
-                             "Fn::Join": [
-                               "",
-                               [
-                                 " --role ",
-                                 { "Ref": "InstanceRole" }
-                               ]
-                             ]
-                           },
-                           ""
-                         ]
-                       },
+                       "  --resource GitLabHost",
                        {
                          "Fn::If": [
                            "UseCfnUrl",
@@ -1235,11 +873,11 @@
                        " )\n\n",
                 "      # Install admin-groups keys to provisioning user\n",
                 "      curl -skL ",
-                          { "Ref" : "AdminPubkeyURL" },
+                          { "Ref": "AdminPubkeyURL" },
                           " -o /tmp/admin.keys || err_exit ",
                           "'Could not download admin keys'\n",
                 "      cat /tmp/admin.keys >> /home/",
-                          { "Ref" : "ProvisionUser" },
+                          { "Ref": "ProvisionUser" },
                           "/.ssh/authorized_keys || err_exit ",
                           "'Could not add admin keys'\n",
                 "      \n"
