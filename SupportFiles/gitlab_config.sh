@@ -202,3 +202,9 @@ printf "###\n# Restarting GitLab to finalize settings...\n###\n"
 gitlab-ctl restart || \
       err_exit "Restart did not succeed. Check the logs."
 echo "Restart successful."
+
+#
+# Export any saved SSH keys
+#####
+echo "yes" | gitlab-rake gitlab:shell:setup && echo "Success!" || \
+  err_exit 'Failure during restoration of git-users'\'' SSH pubkeys'
