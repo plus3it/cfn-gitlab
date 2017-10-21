@@ -29,9 +29,9 @@ DEPRPMS=(
           openssh-server
           openssh-clients
         )
-FWPORTS=(
-          80
-          443
+FWSVCS=(
+          http
+          https
         )
 SHARETYPE=${GITLAB_SHARE_TYPE:-UNDEF}
 
@@ -58,11 +58,11 @@ function FwStuff {
       ${FWCMD} --enabled
    fi
 
-   for PORT in "${FWPORTS[@]}"
+   for SVC in "${FWSVCS[@]}"
    do
-      printf "Add firewall exception for port %s... " "${PORT}"
-      ${FWCMD} --permanent "--add-port=${PORT}/tcp" || \
-         err_exit "Failed to add port ${PORT} to firewalld"
+      printf "Add firewall exception for service %s... " "${SVC}"
+      ${FWCMD} --permanent "--add-service=${SVC}" || \
+         err_exit "Failed to add service ${SVC} to firewalld"
    done
 
    # Restart firewalld with new rules loaded
