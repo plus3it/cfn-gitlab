@@ -4,6 +4,12 @@
 #
 #################################################################
 PROGNAME=$(basename "${0}")
+# Read in template envs we might want to use
+while read -r GLENV
+do
+   # shellcheck disable=SC2163
+   export "${GLENV}"
+done < /etc/cfn/GitLab.envs
 GLCONFIG="/etc/gitlab/gitlab.rb"
 RUNDATE=$(date "+%Y%m%d%H%M")
 GITLAB_EXTERNURL="${GITLAB_EXTERNURL:-UNDEF}"
