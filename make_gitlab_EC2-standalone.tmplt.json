@@ -21,6 +21,11 @@
         { "Fn::Equals": [ { "Ref": "NoReboot" }, "true" ] }
       ]
     },
+    "UseCfnAppInstaller": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "GitLabConfScript" }, "" ] }
+      ]
+    },
     "UseCfnUrl": {
       "Fn::Not": [
         { "Fn::Equals": [ { "Ref": "CfnEndpointUrl" }, "" ] }
@@ -397,6 +402,21 @@
               }
             }
           },
+          "app-install": {
+            "files": {
+              "/etc/cfn/scripts/glprep.sh": {
+                "source": { "Ref": "GitLabConfScript" },
+                "group": "root",
+                "mode": "000700",
+                "owner": "root"
+              }
+            },
+            "commands": {
+              "10-app-install": {
+                "command": "bash -xe /etc/cfn/scripts/glprep.sh"
+              }
+            }
+          },
           "configSets": {
             "launch": [
               "setup",
@@ -404,6 +424,13 @@
               "osprep-launch",
               "watchmaker-install",
               "watchmaker-launch",
+              {
+                "Fn::If": [
+                  "UseCfnAppInstaller",
+                  "app-install",
+                  { "Ref" : "AWS::NoValue" }
+                ]
+              },
               "finalize",
               {
                 "Fn::If": [
@@ -419,6 +446,7 @@
               "osprep-launch",
               "watchmaker-install",
               "watchmaker-update",
+              "app-install",
               "finalize",
               {
                 "Fn::If": [
@@ -679,12 +707,6 @@
               },
               "/etc/cfn/scripts/osprep.sh": {
                 "source": { "Ref": "GitLabPrepScript" },
-                "group": "root",
-                "mode": "000700",
-                "owner": "root"
-              },
-              "/etc/cfn/scripts/glprep.sh": {
-                "source": { "Ref": "GitLabConfScript" },
                 "group": "root",
                 "mode": "000700",
                 "owner": "root"
