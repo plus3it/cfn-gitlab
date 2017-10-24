@@ -79,16 +79,8 @@ function ValidShare {
 # Ensure we've passed an necessary ENVs
 #####
 if [[ ${GITLAB_EXTERNURL} = UNDEF ]] ||
-   [[ ${GITLAB_DATABASE} = UNDEF ]] ||
-   [[ ${GITLAB_DBUSER} = UNDEF ]] ||
    [[ ${GITLAB_PASSWORD} = UNDEF ]] ||
-   [[ ${GITLAB_DBHOST} = UNDEF ]] ||
-   [[ ${GITLAB_AD_HOST} = UNDEF ]] ||
-   [[ ${GITLAB_AD_PORT} = UNDEF ]] ||
-   [[ ${GITLAB_AD_BINDCRYPT} = UNDEF ]] ||
-   [[ ${GITLAB_AD_BINDUSER} = UNDEF ]] ||
-   [[ ${GITLAB_AD_BINDPASS} = UNDEF ]] ||
-   [[ ${GITLAB_AD_SRCHBASE} = UNDEF ]]
+   [[ ${GITLAB_DBHOST} = UNDEF ]]
 then
    err_exit "Required env var(s) not defined. Aborting!"
 fi
