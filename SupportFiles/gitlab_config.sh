@@ -113,46 +113,11 @@ install -b -m 0600 /dev/null ${GLCONFIG} || \
 chcon "--reference=${GLCONFIG}.bak-${RUNDATE}" ${GLCONFIG} || \
    err_exit "Failed to set SELinx label on new/null config file"
 
-cat << EOF > ${GLCONFIG}
-external_url 'https://${GITLAB_EXTERNURL}'
-nginx['listen_addresses'] = ["0.0.0.0", "[::]"]
-nginx['listen_port'] = 80
-nginx['listen_https'] = false
-postgresql['enable'] = false
-gitlab_rails['db_adapter'] = "postgresql"
-gitlab_rails['db_encoding'] = "unicode"
-gitlab_rails['db_database'] = "${GITLAB_DATABASE}"
-gitlab_rails['db_username'] = "${GITLAB_DBUSER}"
-gitlab_rails['db_password'] = "${GITLAB_PASSWORD}"
-gitlab_rails['db_host'] = "${GITLAB_DBHOST}"
-gitlab_rails['smtp_enable'] = true
-gitlab_rails['smtp_address'] = "${SMTP_FQDN}"
-gitlab_rails['smtp_port'] = "${SMTP_PORT}"
-gitlab_rails['smtp_user_name'] = "${SMTP_USER}"
-gitlab_rails['smtp_password'] = "${SMTP_PASS}"
-gitlab_rails['smtp_domain'] = "${SMTP_FROMDOM}"
-gitlab_rails['smtp_authentication'] = "login"
-gitlab_rails['smtp_enable_starttls_auto'] = true
-gitlab_rails['gitlab_email_from'] = "${SMTP_FROMUSR}"
-gitlab_rails['gitlab_email_reply_to'] = "${SMTP_RPLYUSR}"
-gitlab_rails['ldap_enabled'] = true
-gitlab_rails['ldap_servers'] = YAML.load <<-EOS
-main:
-  label: 'ActiveDirectory'
-  host: '${GITLAB_AD_HOST}'
-  port: ${GITLAB_AD_PORT}
-  method: '${GITLAB_AD_BINDCRYPT}'
-  bind_dn: '${GITLAB_AD_BINDUSER}'
-  password: '${GITLAB_AD_BINDPASS}'
-  timeout: 10
-  active_directory: true
-  uid: 'sAMAccountName'
-  allow_username_or_email_login: false
-  block_auto_created_users: false
-  base: '${GITLAB_AD_SRCHBASE}'
-  uid: 'sAMAccountName'
-EOS
-EOF
+sed '{
+  s/__PROXY_URL__/'"${GITLAB_EXTERNURL}"'/
+  s/__RDS_DB_PASSWD__/'"${GITLAB_PASSWORD}"'/
+  s/__RDS_DB_FQDN__/'"${GITLAB_DBHOST}"'/
+}' /etc/cfn/gitlab.rb.tmplt > ${GLCONFIG}
 
 # shellcheck disable=SC2181
 if [[ $? -eq 0 ]]
