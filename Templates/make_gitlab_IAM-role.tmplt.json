@@ -39,6 +39,11 @@
     }
   },
   "Parameters": {
+    "ConfigBucketPath": {
+      "Default": "",
+      "Description": "S3 bucket-path to GitLab configuration template-file.",
+      "Type": "String"
+    },
     "GitlabBucketArn": {
       "Description": "Arn of the S3 Bucket used to host GitLab content.",
       "Type": "String"
@@ -89,6 +94,25 @@
                   ]
                 }
               ]
+            },
+            {
+            "Action": [
+                "s3:GetObject"
+            ],
+            "Resource": [
+              {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    { "Ref": "AWS::Partition" },
+                    ":s3:::",
+                    { "Ref": "ConfigBucketPath" }
+                  ]
+                ]
+              }
+            ],
+            "Effect": "Allow"
             },
             {
               "Action": [
