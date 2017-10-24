@@ -42,7 +42,7 @@
       ]
     }
   },
-  "Description": "This template deploys a Linux instance using Watchmaker, which applies the DISA STIG.",
+  "Description": "This template deploys a STIG-hardened Linux EL7 instance to host the GitLab service.",
   "Mappings": {
     "Distro2RootDevice": {
       "AmazonLinux": { "DeviceName": "xvda" },
