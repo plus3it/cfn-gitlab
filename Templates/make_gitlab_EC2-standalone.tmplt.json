@@ -200,39 +200,6 @@
       "Description": "Public/private key pairs allow you to securely connect to your instance after it launches",
       "Type": "AWS::EC2::KeyPair::KeyName"
     },
-    "LdapHost": {
-      "Description": "FQDN of the LDAP host/Active Directory server.",
-      "Type": "String",
-      "AllowedPattern": "^[a-z0-9.-]*$"
-    },
-    "LdapPort": {
-      "Description": "TCP Port that the LDAP/AD service listens on.",
-      "Type": "String",
-      "Default": "389",
-      "AllowedPattern": "^[0-9]*$"
-    },
-    "LdapCrypt": {
-      "Description": "Encryption-method to use for securing the LDAP connection (\"plain\" is BASE64-encoded).",
-      "Type": "String",
-      "Default": "plain",
-      "AllowedValues": [
-        "plain",
-        "ssl",
-        "tls"
-      ]
-    },
-    "LdapProxyUser": {
-      "Description": "Name of the user that has directory-lookup privileges on the target directory service. Use DN or UPN format.",
-      "Type": "String"
-    },
-    "LdapUserPassword": {
-      "Description": "Password of the user that has directory-lookup privileges on the target directory service.",
-      "Type": "String"
-    },
-    "LdapSearchBase": {
-      "Description": "DN of the LDAP search-scope.",
-      "Type": "String"
-    },
     "NoPublicIp": {
       "Description": "Controls whether to assign the instance a public IP. Recommended to leave at \"true\" _unless_ launching in a public subnet",
       "Type": "String",
@@ -311,36 +278,6 @@
       "Type": "String",
       "Default": "gitlab",
       "ConstraintDescription": "An alphanumeric string to complete the hostname portion of the instance's FQDN."
-    },
-    "SmtpAuthSender": {
-      "Description": "Authorized SMTP-relay sender ID.",
-      "Type": "String"
-    },
-    "SmtpMessageDomain": {
-      "Description": "@DOMAIN value for notification mails.",
-      "Type": "String"
-    },
-    "SmtpNoticeUser": {
-      "Description": "User to set in outbound messages \"From:\" address.",
-      "Type": "String"
-    },
-    "SmtpRelayFqdn": {
-      "Description": "FQDN of the SMTP-relay host.",
-      "Type": "String"
-    },
-    "SmtpRelayPort": {
-      "AllowedValues": [
-        "25",
-        "465",
-        "587"
-      ],
-      "Default": "465",
-      "Description": "Listener-port of the SMTP-relay host.",
-      "Type": "String"
-    },
-    "SmtpSenderPass": {
-      "Description": "Password or the authorized SMTP-relay sender ID.",
-      "Type": "String"
     },
     "SubnetId": {
       "Description": "Subnet to associate to the Instance",
@@ -638,47 +575,6 @@
                         "\n",
                       "GITLAB_PASSWORD=",
                         { "Ref" : "RdsDbPasswd" },
-                        "\n",
-                      "GITLAB_AD_HOST=",
-                        { "Ref" : "LdapHost" },
-                        "\n",
-                      "GITLAB_AD_PORT=",
-                        { "Ref" : "LdapPort" },
-                        "\n",
-                      "GITLAB_AD_BINDCRYPT=",
-                        { "Ref" : "LdapCrypt" },
-                        "\n",
-                      "GITLAB_AD_BINDUSER=",
-                        { "Ref" : "LdapProxyUser" },
-                        "\n",
-                      "GITLAB_AD_BINDPASS=",
-                        { "Ref" : "LdapUserPassword" },
-                        "\n",
-                      "GITLAB_AD_SRCHBASE=",
-                        { "Ref" : "LdapSearchBase" },
-                        "\n",
-                      "GITLAB_SMTP_FROM_DOM=",
-                        { "Ref" : "DnsSuffix" },
-                        "\n",
-                      "GITLAB_SMTP_RELAY=",
-                        { "Ref" : "SmtpRelayFqdn" },
-                        "\n",
-                      "GITLAB_SMTP_PORT=",
-                        { "Ref" : "SmtpRelayPort" },
-                        "\n",
-                      "GITLAB_SMTP_USER=",
-                        { "Ref" : "SmtpAuthSender" },
-                        "\n",
-                      "GITLAB_SMTP_PASS=",
-                        { "Ref" : "SmtpSenderPass" },
-                        "\n",
-                      "GITLAB_SMTP_FROM_DOM=",
-                        { "Ref" : "SmtpMessageDomain" },
-                        "\n",
-                      "GITLAB_SMTP_FROM_USER=",
-                        { "Ref" : "SmtpNoticeUser" },
-                        "@",
-                        { "Ref" : "SmtpMessageDomain" },
                         "\n",
                       "GITLAB_SHARE_URI=",
                         { "Ref" : "GitRepoShareUri" },
