@@ -135,6 +135,11 @@
       "Description": "Folder in S3 Bucket to host backups of GitLab config-data",
       "Type": "String"
     },
+    "ConfigBucketPath": {
+      "Default": "",
+      "Description": "S3 bucket-path to GitLab configuration template-file.",
+      "Type": "String"
+    },
     "DbAdminName": {
       "Description": "Name of the GitLab master database-user.",
       "Type": "String"
@@ -411,6 +416,7 @@
               ]
             ]
           },
+          "ConfigBucketPath": { "Ref": "ConfigBucketPath" },
           "DnsSuffix": { "Ref": "DnsSuffix" },
           "EpelRepo": { "Ref": "EpelRepo" },
           "GitLabConfScript": { "Ref": "GitLabConfScript" },
@@ -525,6 +531,7 @@
     "IamRes": {
       "Properties": {
         "Parameters": {
+          "ConfigBucketPath": { "Ref": "ConfigBucketPath" },
           "GitlabBucketArn": {
             "Fn::GetAtt": [ "S3Res", "Outputs.GitlabBucketArn" ]
           },
