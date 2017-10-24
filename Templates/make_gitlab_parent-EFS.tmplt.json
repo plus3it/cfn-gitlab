@@ -473,7 +473,7 @@
             ]
           },
           "ServerHostname": { "Ref": "ServerHostname" },
-          "SubNetId": { "Ref": "SubNetId" }
+          "SubnetId": { "Ref": "SubNetId" }
         },
         "TemplateURL": { "Ref": "GitlabEc2Template" },
         "TimeoutInMinutes": "10"
