@@ -1,6 +1,64 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "This template deploys a standalone Linux instance to host a GitLab repository server.",
+  "Conditions": {
+    "AssignInstanceRole": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "InstanceRole" }, "" ] }
+      ]
+    },
+    "AssignPublicIp": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "NoPublicIp" }, "true" ] }
+      ]
+    },
+    "CreateAppVolume": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "AppVolumeDevice" }, "" ] }
+      ]
+    },
+    "Reboot": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "NoReboot" }, "true" ] }
+      ]
+    },
+    "UseCfnAppInstaller": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "GitLabConfScript" }, "" ] }
+      ]
+    },
+    "UseCfnUrl": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "CfnEndpointUrl" }, "" ] }
+      ]
+    },
+    "UseEnvironment": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "WatchmakerEnvironment" }, "" ] }
+      ]
+    },
+    "UseWamConfig": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "WatchmakerConfig" }, "" ] }
+      ]
+    }
+  },
+  "Description": "This template deploys a Linux instance using Watchmaker, which applies the DISA STIG.",
+  "Mappings": {
+    "Distro2RootDevice": {
+      "AmazonLinux": { "DeviceName": "xvda" },
+      "CentOS": { "DeviceName": "sda1" },
+      "RedHat": { "DeviceName": "sda1" }
+    }
+  },
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {}
+  },
+  "Outputs": {
+    "GitlabInstanceId": {
+      "Description": "Instance ID",
+      "Value": { "Ref": "GitLabHost" }
+    }
+  },
   "Parameters": {
     "AmiId": {
       "Description": "ID of the AMI to launch",
@@ -59,13 +117,19 @@
       "Description": "Folder in S3 Bucket to host backups of GitLab config-data",
       "Type": "String"
     },
-    "DnsSuffix" : {
-      "Description" : "Suffix for GitLab's hostname and DNS record",
+    "CfnEndpointUrl": {
+      "Description": "URL to the CloudFormation Endpoint. e.g. https://cloudformation.us-east-1.amazonaws.com",
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^$|^http://.*$|^https://.*$"
+    },
+    "DnsSuffix": {
+      "Description": "Suffix for GitLab's hostname and DNS record",
       "Type": "String",
       "ConstraintDescription": "An alphanumeric string to complete the domain portion of the instance's FQDN."
     },
     "EpelRepo": {
-      "Description" : "Name of network's EPEL repo.",
+      "Description": "Name of network's EPEL repo.",
       "Type": "String",
       "Default": "epel",
       "AllowedPattern": "^[a-z][a-z0-9-]*$",
@@ -183,13 +247,13 @@
       ]
     },
     "PipIndexFips": {
-      "Description" : "URL of pip index  that is compatible with FIPS 140-2 requirements.",
+      "Description": "URL of pip index  that is compatible with FIPS 140-2 requirements.",
       "Type": "String",
       "Default": "https://pypi.org/simple/",
       "AllowedPattern": "^$|^http://.*$|^https://.*$"
     },
     "PipRpm": {
-      "Description" : "Name of preferred pip RPM.",
+      "Description": "Name of preferred pip RPM.",
       "Type": "String",
       "Default": "python2-pip"
     },
@@ -201,62 +265,62 @@
       "ConstraintDescription": "Alphanumeric string between 6 and 12 characters."
     },
     "ProxyName": {
-      "Description" : "FQDN of public-facing reverse-proxy.",
+      "Description": "FQDN of public-facing reverse-proxy.",
       "Type": "String",
       "AllowedPattern": "^[a-z][a-z0-9.-]*[a-z]$",
       "ConstraintDescription": "Alphanumeric string DNS FQDN representing the RDS end-point name."
     },
     "PyStache": {
-      "Description" : "Name of preferred pystache RPM.",
+      "Description": "Name of preferred pystache RPM.",
       "Type": "String",
       "Default": "pystache"
     },
     "RdsDbHost": {
-      "Description" : "RDS End-point Name (FQDN)",
+      "Description": "RDS End-point Name (FQDN)",
       "Type": "String",
       "AllowedPattern": "^[a-zA-Z0-9.-]*$",
       "ConstraintDescription": "Alphanumeric string DNS FQDN representing the RDS end-point name."
     },
     "RdsDbInstance": {
-      "Description" : "RDS database name.",
+      "Description": "RDS database name.",
       "Type": "String",
       "AllowedPattern": "^[a-z][a-zA-Z0-9_]*$",
       "ConstraintDescription": "Alphanumeric string representing the RDS database instance."
     },
     "RdsDbAdmin": {
-      "Description" : "RDS database-user name.",
+      "Description": "RDS database-user name.",
       "Type": "String",
       "AllowedPattern": "^[a-z]*$",
       "ConstraintDescription": "Alphanumeric string representing the RDS database-user name."
     },
     "RdsDbPasswd": {
-      "Description" : "RDS database-user login password.",
+      "Description": "RDS database-user login password.",
       "Type": "String"
     },
     "SecurityGroupIds": {
       "Description": "List of security groups to apply to the instance(s)",
       "Type": "List<AWS::EC2::SecurityGroup::Id>"
     },
-    "ServerHostname" : {
-      "Description" : "Node-name for GitLab's hostname and DNS record",
+    "ServerHostname": {
+      "Description": "Node-name for GitLab's hostname and DNS record",
       "Type": "String",
       "Default": "gitlab",
       "ConstraintDescription": "An alphanumeric string to complete the hostname portion of the instance's FQDN."
     },
     "SmtpAuthSender": {
-      "Description" : "Authorized SMTP-relay sender ID.",
+      "Description": "Authorized SMTP-relay sender ID.",
       "Type": "String"
     },
     "SmtpMessageDomain": {
-      "Description" : "@DOMAIN value for notification mails.",
+      "Description": "@DOMAIN value for notification mails.",
       "Type": "String"
     },
     "SmtpNoticeUser": {
-      "Description" : "User to set in outbound messages \"From:\" address.",
+      "Description": "User to set in outbound messages \"From:\" address.",
       "Type": "String"
     },
     "SmtpRelayFqdn": {
-      "Description" : "FQDN of the SMTP-relay host.",
+      "Description": "FQDN of the SMTP-relay host.",
       "Type": "String"
     },
     "SmtpRelayPort": {
@@ -266,341 +330,515 @@
         "587"
       ],
       "Default": "465",
-      "Description" : "Listener-port of the SMTP-relay host.",
+      "Description": "Listener-port of the SMTP-relay host.",
       "Type": "String"
     },
     "SmtpSenderPass": {
-      "Description" : "Password or the authorized SMTP-relay sender ID.",
+      "Description": "Password or the authorized SMTP-relay sender ID.",
       "Type": "String"
     },
-    "SubNetId": {
+    "SubnetId": {
       "Description": "Subnet to associate to the Instance",
       "Type": "AWS::EC2::Subnet::Id"
     },
-    "CfnEndpointUrl": {
-      "Description": "URL to the CloudFormation Endpoint. e.g. https://cloudformation.us-east-1.amazonaws.com",
+    "WatchmakerConfig": {
+      "Description": "(Optional) URL to a Watchmaker config file",
       "Type": "String",
       "Default": "",
-      "AllowedPattern": "^$|^http://.*$|^https://.*$"
-    }
-  },
-  "Conditions": {
-    "CreateAppVolume": {
-      "Fn::Not": [
-        {
-          "Fn::Equals": [
-            {
-              "Ref": "AppVolumeDevice"
-            },
-            ""
-          ]
-        }
-      ]
+      "AllowedPattern": "^$|^http[s]?://.*$"
     },
-    "UseCfnUrl": {
-      "Fn::Not": [
-        {
-          "Fn::Equals": [
-            {
-              "Ref": "CfnEndpointUrl"
-            },
-            ""
-          ]
-        }
+    "WatchmakerEnvironment": {
+      "Description": "Environment in which the instance is being deployed",
+      "Type": "String",
+      "Default": "",
+      "AllowedValues": [
+        "",
+        "dev",
+        "test",
+        "prod"
       ]
-    },
-    "Reboot": {
-      "Fn::Not": [
-        {
-          "Fn::Equals": [
-            {
-              "Ref": "NoReboot"
-            },
-            "true"
-          ]
-        }
-      ]
-    },
-    "AssignInstanceRole": {
-      "Fn::Not": [
-        {
-          "Fn::Equals": [
-            {
-              "Ref": "InstanceRole"
-            },
-            ""
-          ]
-        }
-      ]
-    },
-    "AssignPublicIp": {
-      "Fn::Not": [
-        {
-          "Fn::Equals": [
-            {
-              "Ref": "NoPublicIp"
-            },
-            "true"
-          ]
-        }
-      ]
-    }
-  },
-  "Mappings": {
-  },
-  "Metadata": {
-    "AWS::CloudFormation::Interface": {
-      "ParameterGroups": [
-        {
-          "Label": {
-            "default": "EC2 Instance Configuration"
-          },
-          "Parameters": [
-            "AmiId",
-            "InstanceType",
-            "InstanceRole",
-            "ProvisionUser",
-            "KeyPairName",
-            "AdminPubkeyURL",
-            "NoReboot",
-            "SecurityGroupIds"
-          ]
-        },
-        {
-          "Label": {
-            "default": "EC2 Application EBS Volume"
-          },
-          "Parameters": [
-            "AppVolumeDevice",
-            "AppVolumeMountPath",
-            "AppVolumeSize",
-            "AppVolumeType"
-          ]
-        },
-        {
-          "Label": {
-            "default": "Network Configuration"
-          },
-          "Parameters": [
-            "NoPublicIp",
-            "ServerHostname",
-            "DnsSuffix",
-            "SubNetId"
-          ]
-        },
-        {
-          "Label": {
-            "default": "Repository Storage"
-          },
-          "Parameters": [
-            "GitRepoShareType",
-            "GitRepoShareUri"
-          ]
-        },
-        {
-          "Label": {
-            "default": "S3 Backups"
-          },
-          "Parameters": [
-            "BackupBucket",
-            "BackupFolder"
-          ]
-        },
-        {
-          "Label": {
-            "default": "RDS Parameters"
-          },
-          "Parameters": [
-            "RdsDbHost",
-            "RdsDbInstance",
-            "RdsDbAdmin",
-            "RdsDbPasswd"
-          ]
-        },
-        {
-          "Label": {
-            "default": "Directory Service Parameters"
-          },
-          "Parameters": [
-            "LdapHost",
-            "LdapPort",
-            "LdapCrypt",
-            "LdapProxyUser",
-            "LdapUserPassword",
-            "LdapSearchBase"
-          ]
-        },
-        {
-          "Label": {
-            "default": "SMTP Relay Service Parameters"
-          },
-          "Parameters": [
-            "SmtpRelayFqdn",
-            "SmtpRelayPort",
-            "SmtpMessageDomain",
-            "SmtpAuthSender",
-            "SmtpSenderPass",
-            "SmtpNoticeUser"
-          ]
-        },
-        {
-          "Label": {
-            "default": "Miscellaneous Parameters"
-          },
-          "Parameters": [
-            "GitLabRpmName",
-            "GitLabPrepScript",
-            "GitLabConfScript",
-            "EpelRepo",
-            "PipRpm",
-            "PyStache",
-            "PipIndexFips",
-            "CfnEndpointUrl"
-          ]
-        }
-      ],
-      "ParameterLabels": {
-        "KeyPairName": {
-          "default": "Primary Provisioning-key"
-        },
-        "AdminPubkeyURL": {
-          "default": "Secondary Provisioning keylist URL"
-        },
-        "GitRepoShareType": {
-          "default": "NAS FS-type"
-        },
-        "GitRepoShareUri": {
-          "default": "NAS Share-path"
-        },
-        "SmtpAuthSender": {
-          "default": "Authorized Sender"
-        },
-        "SmtpMessageDomain": {
-          "default": "Notificaiton Domain"
-        },
-        "SmtpNoticeUser": {
-          "default": "'From:' User"
-        },
-        "SmtpRelayFqdn": {
-          "default": "Relay FQDN"
-        },
-        "SmtpRelayPort": {
-          "default": "Relay Port"
-        },
-        "SmtpSenderPass": {
-          "default": "Authentication Password"
-        },
-        "ForceNewInstancesToggle": {
-          "default": "Force New Instances"
-        }
-      }
-    },
-    "AWS::CloudFormation::Designer": {
-      "c49ece7d-56d3-47af-a63e-6e00ea2cb068": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": 60,
-          "y": 90
-        },
-        "z": 1,
-        "embeds": []
-      }
     }
   },
   "Resources": {
     "GitLabHost": {
-      "Type": "AWS::EC2::Instance",
-      "Metadata" : {
-        "AWS::CloudFormation::Init" : {
-          "config" : {
-            "files" : {
-              "/etc/cfn/cfn-hup.conf" : {
-                "content" : {
-                  "Fn::Join" : ["", [
-                    "[main]\n",
-                    "stack=", { "Ref" : "AWS::StackId" }, "\n",
-                    "region=", { "Ref" : "AWS::Region" }, "\n",
-                    {
-                      "Fn::If" : [
-                        "AssignInstanceRole", {
-                          "Fn::Join" : [ "", [
-                            "role=",
-                            { "Ref" : "InstanceRole" },
-                            "\n"
-                          ]]
-                        },
-                        ""
-                      ]
-                    },
-                    {
-                      "Fn::If" : [
-                        "AssignInstanceRole", {
-                          "Fn::Join" : [ "", [
-                            "url=",
-                            { "Ref" : "CfnEndpointUrl" },
-                            "\n"
-                          ]]
-                        },
-                        ""
-                      ]
-                    }
-                  ]]
-                },
-                "mode" : "000400",
-                "owner" : "root",
-                "group" : "root"
-              },
-              "/etc/cfn/hooks.d/cfn-auto-reloader.conf" : {
-                "content" : {
-                  "Fn::Join" : ["", [
-                    "[cfn-auto-reloader-hook]\n",
-                    "triggers=post.update\n",
-                    "path=Resources.GitLabHost.Metadata\n",
-                    "action=/opt/aws/bin/cfn-init -v -c update",
-                    " --stack ", { "Ref" : "AWS::StackName" },
-                    " --resource GitLabHost",
-                    {
-                      "Fn::If" : [
-                        "AssignInstanceRole",
-                        {
-                          "Fn::Join" : [ "", [
-                            " --role ",
-                            { "Ref" : "InstanceRole" }
-                          ]]
-                        },
-                        ""
-                      ]
-                    },
-                    {
-                      "Fn::If" : [
-                        "UseCfnUrl",
-                        {
-                          "Fn::Join" : [ "", [
-                            " --url ",
-                            { "Ref" : "CfnEndpointUrl" }
-                          ]]
-                        },
-                        ""
-                      ]
-                    }
-                  ]]
-                },
-                "mode" : "000400",
-                "owner" : "root",
-                "group" : "root"
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Count": "1",
+          "Timeout": "PT30M"
+        }
+      },
+      "Metadata": {
+        "AWS::CloudFormation::Authentication": {
+          "Fn::If": [
+            "AssignInstanceRole",
+            {
+              "Ec2IamRole": {
+                "roleName": { "Ref": "InstanceRole" },
+                "type": "S3"
               }
             },
-            "services" : {
-              "sysvinit" : {
-                "cfn-hup" : {
-                  "enabled" : "true",
-                  "ensureRunning" : "true",
-                  "files" : [
+            { "Ref": "AWS::NoValue" }
+          ]
+        },
+        "AWS::CloudFormation::Init": {
+          "admkey-install": {
+            "commands": {
+              "10-admkey-install": {
+                "command": "bash -xe /tmp/admkey.sh"
+              }
+            }
+          },
+          "app-install": {
+            "files": {
+              "/etc/cfn/scripts/glprep.sh": {
+                "source": { "Ref": "GitLabConfScript" },
+                "group": "root",
+                "mode": "000700",
+                "owner": "root"
+              }
+            },
+            "commands": {
+              "10-app-install": {
+                "command": "bash -xe /etc/cfn/scripts/glprep.sh"
+              }
+            }
+          },
+          "configSets": {
+            "launch": [
+              "setup",
+              "admkey-install",
+              "osprep-launch",
+              "watchmaker-install",
+              "watchmaker-launch",
+              {
+                "Fn::If": [
+                  "UseCfnAppInstaller",
+                  "app-install",
+                  { "Ref" : "AWS::NoValue" }
+                ]
+              },
+              "finalize",
+              {
+                "Fn::If": [
+                  "Reboot",
+                  "reboot",
+                  { "Ref": "AWS::NoValue" }
+                ]
+              }
+            ],
+            "update": [
+              "setup",
+              "admkey-install",
+              "osprep-launch",
+              "watchmaker-install",
+              "watchmaker-update",
+              "app-install",
+              "finalize",
+              {
+                "Fn::If": [
+                  "Reboot",
+                  "reboot",
+                  { "Ref": "AWS::NoValue" }
+                ]
+              }
+            ]
+          },
+          "finalize": {
+            "commands": {
+              "10-signal-success": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "/opt/aws/bin/cfn-signal -e 0",
+                      " --stack ",
+                      { "Ref": "AWS::StackName" },
+                      " --resource GitLabHost",
+                      {
+                        "Fn::If": [
+                          "UseCfnUrl",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --url ",
+                                { "Ref": "CfnEndpointUrl" }
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      " --region ",
+                      { "Ref": "AWS::Region" },
+                      "\n"
+                    ]
+                  ]
+                },
+                "ignoreErrors": "true"
+              }
+            }
+          },
+          "install-updates": {
+            "commands": {
+              "10-install-updates": {
+                "command": "yum -y update"
+              }
+            }
+          },
+          "osprep-launch": {
+            "commands": {
+              "10-osprep-launch": {
+                "command": "bash -xe /etc/cfn/scripts/osprep.sh"
+              }
+            }
+          },
+          "reboot": {
+            "commands": {
+              "10-reboot": {
+                "command": "shutdown -r +1 &"
+              }
+            }
+          },
+          "setup": {
+            "files": {
+              "/etc/cfn/cfn-hup.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[main]\n",
+                      "stack=",
+                      { "Ref": "AWS::StackId" },
+                      "\n",
+                      "region=",
+                      { "Ref": "AWS::Region" },
+                      "\n",
+                      {
+                        "Fn::If": [
+                          "UseCfnUrl",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                "url=",
+                                { "Ref": "CfnEndpointUrl" },
+                                "\n"
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      "interval=1",
+                      "\n",
+                      "verbose=true",
+                      "\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000400",
+                "owner": "root"
+              },
+              "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[cfn-auto-reloader-hook]\n",
+                      "triggers=post.update\n",
+                      "path=Resources.GitLabHost.Metadata\n",
+                      "action=/opt/aws/bin/cfn-init -v -c update",
+                      " --stack ",
+                      { "Ref": "AWS::StackName" },
+                      " --resource GitLabHost",
+                      {
+                        "Fn::If": [
+                          "UseCfnUrl",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --url ",
+                                { "Ref": "CfnEndpointUrl" }
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      " --region ",
+                      { "Ref": "AWS::Region" },
+                      "\n",
+                      "runas=root\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000400",
+                "owner": "root"
+              },
+              "/etc/cfn/scripts/watchmaker-install.sh": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash\n\n",
+                      "PYPI_URL=",
+                      { "Ref": "PipIndexFips" },
+                      "\n",
+                      "pip install --index-url=\"$PYPI_URL\" wheel==0.29.0\n",
+                      "pip install",
+                      " --index-url=\"$PYPI_URL\"",
+                      " --upgrade pip setuptools boto3 watchmaker\n\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000700",
+                "owner": "root"
+              },
+              "/etc/cfn/GitLab.envs": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "GITLAB_AWS_REGION=",
+                        { "Ref" : "AWS::Region" },
+                        "\n",
+                      "GITLAB_PROXY_FQDN=",
+                        { "Ref" : "ProxyName" },
+                        "\n",
+                      "GITLAB_DATABASE=",
+                        { "Ref" : "RdsDbInstance" },
+                        "\n",
+                      "GITLAB_DBHOST=",
+                        { "Ref" : "RdsDbHost" },
+                        "\n",
+                      "GITLAB_DBUSER=",
+                        { "Ref" : "RdsDbAdmin" },
+                        "\n",
+                      "GITLAB_PASSWORD=",
+                        { "Ref" : "RdsDbPasswd" },
+                        "\n",
+                      "GITLAB_AD_HOST=",
+                        { "Ref" : "LdapHost" },
+                        "\n",
+                      "GITLAB_AD_PORT=",
+                        { "Ref" : "LdapPort" },
+                        "\n",
+                      "GITLAB_AD_BINDCRYPT=",
+                        { "Ref" : "LdapCrypt" },
+                        "\n",
+                      "GITLAB_AD_BINDUSER=",
+                        { "Ref" : "LdapProxyUser" },
+                        "\n",
+                      "GITLAB_AD_BINDPASS=",
+                        { "Ref" : "LdapUserPassword" },
+                        "\n",
+                      "GITLAB_AD_SRCHBASE=",
+                        { "Ref" : "LdapSearchBase" },
+                        "\n",
+                      "GITLAB_SMTP_FROM_DOM=",
+                        { "Ref" : "DnsSuffix" },
+                        "\n",
+                      "GITLAB_SMTP_RELAY=",
+                        { "Ref" : "SmtpRelayFqdn" },
+                        "\n",
+                      "GITLAB_SMTP_PORT=",
+                        { "Ref" : "SmtpRelayPort" },
+                        "\n",
+                      "GITLAB_SMTP_USER=",
+                        { "Ref" : "SmtpAuthSender" },
+                        "\n",
+                      "GITLAB_SMTP_PASS=",
+                        { "Ref" : "SmtpSenderPass" },
+                        "\n",
+                      "GITLAB_SMTP_FROM_DOM=",
+                        { "Ref" : "SmtpMessageDomain" },
+                        "\n",
+                      "GITLAB_SMTP_FROM_USER=",
+                        { "Ref" : "SmtpNoticeUser" },
+                        "@",
+                        { "Ref" : "SmtpMessageDomain" },
+                        "\n",
+                      "GITLAB_SHARE_URI=",
+                        { "Ref" : "GitRepoShareUri" },
+                        "\n",
+                      "GITLAB_SHARE_TYPE=",
+                        { "Ref" : "GitRepoShareType" },
+                        "\n",
+                      "GITLAB_BACKUP_BUCKET=",
+                        { "Ref" : "BackupBucket" },
+                        "\n",
+                      "GITLAB_BACKUP_FOLDER=",
+                        { "Ref" : "BackupFolder" },
+                        "\n",
+                      "GITLAB_EXTERNURL=",
+                        { "Ref" : "ProxyName" },
+                        "\n",
+                      "GITLAB_RPM_NAME=",
+                        { "Ref" : "GitLabRpmName" },
+                        "\n",
+                      "GITLAB_YUM_CONFIG=",
+                        { "Ref" : "GitLabRpmSourceUri" },
+                        "\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000700",
+                "owner": "root"
+              },
+              "/etc/cfn/scripts/osprep.sh": {
+                "source": { "Ref": "GitLabPrepScript" },
+                "group": "root",
+                "mode": "000700",
+                "owner": "root"
+              },
+              "/tmp/adminkeys.pub": {
+                "source": { "Ref": "AdminPubkeyURL" },
+                "group": "root",
+                "mode": "000600",
+                "owner": "root"
+              },
+              "/tmp/admkey.sh": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash\n\n",
+                      "PROVHOME=$(getent passwd ",
+                      { "Ref": "ProvisionUser" },
+                      " | awk -F\":\" '{print $6}')\n",
+                      "\n",
+                      "install -b -m 000600 -o ",
+                      { "Ref": "ProvisionUser" },
+                      " -g ",
+                      { "Ref": "ProvisionUser" },
+                      " /tmp/adminkeys.pub ${PROVHOME}/.ssh/authorized_keys\n",
+                      "\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000700",
+                "owner": "root"
+              }
+            },
+            "services": {
+              "sysvinit": {
+                "cfn-hup": {
+                  "enabled": "true",
+                  "ensureRunning": "true",
+                  "files": [
                     "/etc/cfn/cfn-hup.conf",
                     "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+                  ]
+                }
+              }
+            }
+          },
+          "watchmaker-install": {
+            "commands": {
+              "10-watchmaker-install": {
+                "command": "bash -xe /etc/cfn/scripts/watchmaker-install.sh"
+              }
+            }
+          },
+          "watchmaker-launch": {
+            "commands": {
+              "10-watchmaker-launch": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "watchmaker --log-level debug",
+                      " --log-dir /var/log/watchmaker",
+                      " --no-reboot",
+                      {
+                        "Fn::If": [
+                          "UseWamConfig",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --config \"",
+                                { "Ref": "WatchmakerConfig" },
+                                "\""
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      {
+                        "Fn::If": [
+                          "UseEnvironment",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --env \"",
+                                { "Ref": "WatchmakerEnvironment" },
+                                "\""
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      }
+                    ]
+                  ]
+                }
+              }
+            }
+          },
+          "watchmaker-update": {
+            "commands": {
+              "10-watchmaker-update": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "watchmaker --log-level debug",
+                      " --log-dir /var/log/watchmaker",
+                      " --salt-states None",
+                      " --no-reboot",
+                      {
+                        "Fn::If": [
+                          "UseWamConfig",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --config \"",
+                                { "Ref": "WatchmakerConfig" },
+                                "\""
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      {
+                        "Fn::If": [
+                          "UseEnvironment",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --env \"",
+                                { "Ref": "WatchmakerEnvironment" },
+                                "\""
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      }
+                    ]
                   ]
                 }
               }
@@ -608,82 +846,42 @@
           }
         }
       },
-      "CreationPolicy": {
-        "ResourceSignal": {
-          "Count": "1",
-          "Timeout": "PT30M"
-        }
-      },
       "Properties": {
-        "ImageId": {
-          "Ref": "AmiId"
-        },
-        "InstanceType": {
-          "Ref": "InstanceType"
-        },
-        "IamInstanceProfile": {
-          "Fn::If": [
-            "AssignInstanceRole",
-            {
-              "Ref": "InstanceRole"
-            },
-            {
-              "Ref": "AWS::NoValue"
-            }
-          ]
-        },
-        "Tags": [
-          {
-            "Key": "Name",
-            "Value": {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "Ref": "AWS::StackName"
-                  }
-                ]
-              ]
-            }
-          }
-        ],
         "BlockDeviceMappings": [
           {
             "DeviceName": "/dev/sda1",
             "Ebs": {
-              "VolumeType": "gp2",
-              "DeleteOnTermination": "true"
+              "DeleteOnTermination": "true",
+              "VolumeType": "gp2"
             }
           },
           {
             "Fn::If": [
               "CreateAppVolume",
               {
-                "DeviceName": {
-                  "Ref": "AppVolumeDevice"
-                },
+                "DeviceName": { "Ref": "AppVolumeDevice" },
                 "Ebs": {
-                  "VolumeSize": {
-                    "Ref": "AppVolumeSize"
-                  },
-                  "VolumeType": {
-                    "Ref": "AppVolumeType"
-                  },
-                  "DeleteOnTermination": "true"
+                  "DeleteOnTermination": "true",
+                  "VolumeSize": { "Ref": "AppVolumeSize" },
+                  "VolumeType": { "Ref": "AppVolumeType" }
                 }
               },
-              {
-                "Ref": "AWS::NoValue"
-              }
+              { "Ref": "AWS::NoValue" }
             ]
           }
         ],
-        "KeyName": {
-          "Ref": "KeyPairName"
+        "IamInstanceProfile": {
+          "Fn::If": [
+            "AssignInstanceRole",
+            { "Ref": "InstanceRole" },
+            { "Ref": "AWS::NoValue" }
+          ]
         },
+        "ImageId": { "Ref": "AmiId" },
+        "InstanceType": { "Ref": "InstanceType" },
+        "KeyName": { "Ref": "KeyPairName" },
         "NetworkInterfaces": [
           {
-            "DeviceIndex": "0",
             "AssociatePublicIpAddress": {
               "Fn::If": [
                 "AssignPublicIp",
@@ -691,231 +889,149 @@
                 "false"
               ]
             },
-            "GroupSet": {
-              "Ref": "SecurityGroupIds"
-            },
-            "SubnetId": {
-              "Ref": "SubNetId"
+            "DeviceIndex": "0",
+            "GroupSet": { "Ref": "SecurityGroupIds" },
+            "SubnetId": { "Ref": "SubnetId" }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  { "Ref": "AWS::StackName" }
+                ]
+              ]
             }
           }
         ],
         "UserData": {
-          "Fn::Base64" : {
-            "Fn::Join" : [ "", [
-              "#cloud-config\n",
-              "\n",
-              "system_info:\n",
-              "  default_user:\n",
-              "    name: ",
-                { "Ref" : "ProvisionUser" },
-              "\n",
-              {
-                "Fn::If" :
-                [
-                  "CreateAppVolume",
-                  {
-                    "Fn::Join" : [ "", [
-                      "\n",
-                      "bootcmd:\n",
-                      "  - cloud-init-per instance mkfs-appvolume mkfs -t ext4 ",
-                      { "Ref" : "AppVolumeDevice" },
-                      "\n",
-                      "mounts:\n",
-                      "  - [ ",
-                        { "Ref" : "AppVolumeDevice" }, ", ",
-                        { "Ref" : "AppVolumeMountPath" },
-                      " ]\n"
-                    ]]
-                  },
-                  { "Ref" : "AWS::NoValue" }
-                ]
-              },
-              "\n",
-              "hostname: ",
-                     { "Ref" : "ServerHostname" },
-              "\n",
-              "fqdn: ",
-                     { "Ref" : "ServerHostname" },
-                     ".",
-                     { "Ref" : "DnsSuffix" },
-              "\n",
-              "\n",
-              "runcmd:\n",
-              "  - |\n",
-              "      \n",
-              "      # Env-Vars for setting up RDS connectivity\n",
-              "      export GITLAB_PROXY_FQDN=",
-                       { "Ref" : "ProxyName" },
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#cloud-config\n",
+                "\n",
+                "system_info:\n",
+                "  default_user:\n",
+                "    name: ",
+                { "Ref": "ProvisionUser" },
+                "\n",
+                "\n",
+                "hostname: ",
+                  { "Ref": "ServerHostname" },
+                "\n",
+                "fqdn: ",
+                  { "Ref": "ServerHostname" },
+                  ".",
+                  { "Ref": "DnsSuffix" },
+                "\n",
+                "runcmd:\n",
+                "  - |\n",
+                "      # Export cert bundle ENVs\n",
+                "      export AWS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
+                "      export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n\n",
+                "      \n",
+                "      # Define our error-handler\n",
+                "      function err_exit {\n",
+                "         echo \"${1}\"\n",
+                "         logger -p kern.crit -t UserData \"${1}\"\n",
+                "         /opt/aws/bin/cfn-signal -e 1 --stack ",
+                            { "Ref": "AWS::StackName" },
+                          " --resource GitLabHost\n",
+                "         exit 1\n",
+                "      }\n",
+                "      # Install RPMs needed by the cfn-tools.\n",
+                "      yum --enablerepo=",
+                       { "Ref": "EpelRepo" },
+                       " install -y ",
+                       { "Ref": "PyStache" },
+                       " ",
+                       { "Ref": "PipRpm" },
+                       " || err_exit 'Could not install Cfn dependencies.'\n",
+                "      \n",
+                "      # Upgrade pip and setuptools\n",
+                "      PYPI_URL=",
+                       { "Ref": "PipIndexFips" },
                        "\n",
-              "      export GITLAB_DBHOST=",
-                       { "Ref" : "RdsDbHost" },
-                       "\n",
-              "      export GITLAB_DATABASE=",
-                       { "Ref" : "RdsDbInstance" },
-                       "\n",
-              "      export GITLAB_DBUSER=",
-                       { "Ref" : "RdsDbAdmin" },
-                       "\n",
-              "      export GITLAB_PASSWORD=",
-                       { "Ref" : "RdsDbPasswd" },
-                       "\n",
-              "      export GITLAB_AD_HOST=",
-                       { "Ref" : "LdapHost" },
-                       "\n",
-              "      export GITLAB_AD_PORT=",
-                       { "Ref" : "LdapPort" },
-                       "\n",
-              "      export GITLAB_AD_BINDCRYPT=",
-                       { "Ref" : "LdapCrypt" },
-                       "\n",
-              "      export GITLAB_AD_BINDUSER=",
-                       { "Ref" : "LdapProxyUser" },
-                       "\n",
-              "      export GITLAB_AD_BINDPASS=",
-                       { "Ref" : "LdapUserPassword" },
-                       "\n",
-              "      export GITLAB_AD_SRCHBASE=",
-                       { "Ref" : "LdapSearchBase" },
-                       "\n",
-              "      export GITLAB_SMTP_FROM_DOM=",
-                       { "Ref" : "DnsSuffix" },
-                       "\n",
-              "      export GITLAB_SMTP_RELAY=",
-                       { "Ref" : "SmtpRelayFqdn" },
-                       "\n",
-              "      export GITLAB_SMTP_PORT=",
-                       { "Ref" : "SmtpRelayPort" },
-                       "\n",
-              "      export GITLAB_SMTP_USER=",
-                       { "Ref" : "SmtpAuthSender" },
-                       "\n",
-              "      export GITLAB_SMTP_PASS=",
-                       { "Ref" : "SmtpSenderPass" },
-                       "\n",
-              "      export GITLAB_SMTP_FROM_DOM=",
-                       { "Ref" : "SmtpMessageDomain" },
-                       "\n",
-              "      export GITLAB_SMTP_FROM_USER=",
-                       { "Ref" : "SmtpNoticeUser" },
-                       "@",
-                       { "Ref" : "SmtpMessageDomain" },
-                       "\n",
-              "      export GITLAB_SHARE_URI=",
-                       { "Ref" : "GitRepoShareUri" },
-                       "\n",
-              "      export GITLAB_SHARE_TYPE=",
-		       { "Ref" : "GitRepoShareType" },
-                       "\n",
-              "      export GITLAB_EXTERNURL=\"${GITLAB_PROXY_FQDN}\"\n",
-              "      export GITLAB_BACKUP_BUCKET=",
-		       { "Ref" : "BackupBucket" },
-                       "\n",
-              "      export GITLAB_BACKUP_FOLDER=",
-		       { "Ref" : "BackupFolder" },
-                       "\n",
-              "      export GITLAB_AWS_REGION=",
-                         { "Ref" : "AWS::Region" },
-                       "\n",
-              "      export GITLAB_RPM_NAME=",
-                         { "Ref" : "GitLabRpmName" },
-                       "\n",
-              "      export GITLAB_YUM_CONFIG=",
-                         { "Ref" : "GitLabRpmSourceUri" },
-                       "\n",
-              "      \n",
-              "      # Helper function\n",
-              "      function error_exit {\n",
-              "         /opt/aws/bin/cfn-signal -e 1 --stack ",
-                           { "Ref" : "AWS::StackName" },
-                           " --resource GitLabHost\n",
-              "         exit 1\n",
-              "      }\n",
-              "      \n",
-              "      # Install missing RPMs\n",
-              "      yum --enablerepo=",
-                        { "Ref" : "EpelRepo" },
-                        " install -y ",
-                        { "Ref" : "PyStache" },
-                        " ",
-                        { "Ref" : "PipRpm" },
-                        "|| error_exit 'Could not change install dependent RPMs.'\n",
-              "      \n",
-              "      # Initialize the Cfn subsystems\n",
-              "      /opt/aws/bin/cfn-init -s ",
-                        { "Ref" : "AWS::StackName" },
-                                 " -r GitLabHost ",
-                      " --region ",
-                         { "Ref" : "AWS::Region" },
-                         " && echo 'Successfully ran cfn-init'",
-                         " || error_exit 'Failed to run cfn-init' > /dev/stderr\n",
-              "      \n",
-              "      # Capture CFn envs in case need to use later...\n",
-              "      echo 'Stow script ENVs for later use...'\n",
-              "      install -b -m 0400 /dev/null /etc/cfn/GitLab.envs\n",
-              "      env | grep GITLAB > /etc/cfn/GitLab.envs\n",
-              "      \n",
-              "      # Export cert bundle ENVs\n",
-              "      export AWS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
-              "      export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
-              "      \n",
-              "      # Do pip-stuff\n",
-              "      pip install -i ",
-                        { "Ref": "PipIndexFips" },
-                        " --upgrade pip\n",
-              "      \n",
-              "      # Add amin SSH keys to the ",
-                        { "Ref": "ProvisionUser" },
-                     " account\n",
-              "      PROVHOME=$(getent passwd ",
-                        { "Ref": "ProvisionUser" },
-                        " | awk -F\":\" '{print $6}')\n",
-              "      curl -skL ",
-                        { "Ref": "AdminPubkeyURL" },
-                        " >> ${PROVHOME}/.ssh/authorized_keys || ",
-                     "error_exit 'Failed to install admin-users keys'\n",
-              "      \n",
-              "      # Grab and run GitLab OS-prep script\n",
-              "      curl -skL ",
-                        { "Ref": "GitLabPrepScript" },
-                        " -o /tmp/gitlab_instprep.sh || ",
-                        "error_exit 'Failed to download ",
-                        { "Ref": "GitLabPrepScript" },
-                        "'\n",
-              "      install -b -m 0700 /tmp/gitlab_instprep.sh ",
-                        "/root/gitlab_instprep.sh\n",
-              "      /root/gitlab_instprep.sh || ",
-                        "error_exit 'Errors detected while running ",
-                        "/root/gitlab_instprep.sh'\n",
-              "      curl -skL ",
-                        { "Ref": "GitLabConfScript" },
-                        " -o /tmp/gitlab_config.sh || ",
-                        "error_exit 'Failed to download ",
-                        { "Ref": "GitLabConfScript" },
-                        "'\n",
-              "      install -b -m 0700 /tmp/gitlab_config.sh ",
-                        "/root/gitlab_config.sh\n",
-              "      /root/gitlab_config.sh || ",
-                        "error_exit 'Errors detected while running ",
-                        "/root/gitlab_config.sh'\n",
-              "      \n",
-              "      # Signal Cfn that we're good\n",
-              "      /opt/aws/bin/cfn-signal -e 0 --stack ",
-                        { "Ref" : "AWS::StackName" },
-                        " --resource GitLabHost --url ",
-                        { "Ref" : "CfnEndpointUrl" },
-                        "\n",
-              ""
+                "      pip install --index-url=\"$PYPI_URL\"",
+                       " --upgrade pip setuptools\n\n",
+                "      # Update cfn-bootstrapper hash method\n",
+                "      printf 'Updating CFn hash-check method... '\n",
+                "      PYVERS=$(python -c 'import sys;",
+                       " version=sys.version_info[:2];",
+                       " print(\"{0}.{1}\".format(*version))')\n",
+                "      sed -i '/^[ \\t][ \\t]*self._etag/s/etag$/None/'",
+                       " /usr/lib/python${PYVERS}/site-packages/cfnbootstrap",
+                        "/util.py && echo 'Success' || ",
+                        "err_exit 'Failed updating CFn hash-method'\n",
+                "      \n",
+                "      # Initialize the CFn subsystems\n",
+                "      /opt/aws/bin/cfn-init -v -c launch",
+                       " --stack ",
+                       { "Ref": "AWS::StackName" },
+                       " --resource GitLabHost",
+                       {
+                         "Fn::If": [
+                           "UseCfnUrl",
+                           {
+                             "Fn::Join": [
+                               "",
+                               [
+                                 " --url ",
+                                 { "Ref": "CfnEndpointUrl" }
+                               ]
+                             ]
+                           },
+                           ""
+                         ]
+                       },
+                       " --region ",
+                       { "Ref": "AWS::Region" },
+                       " ||",
+                       " ( echo 'ERROR: cfn-init failed! Aborting!';",
+                       " /opt/aws/bin/cfn-signal -e 1",
+                       "  --stack ",
+                       { "Ref": "AWS::StackName" },
+                       "  --resource GitLabHost",
+                       {
+                         "Fn::If": [
+                           "UseCfnUrl",
+                           {
+                             "Fn::Join": [
+                               "",
+                               [
+                                 " --url ",
+                                 { "Ref": "CfnEndpointUrl" }
+                               ]
+                             ]
+                           },
+                           ""
+                         ]
+                       },
+                       "  --region ",
+                       { "Ref": "AWS::Region" },
+                       ";",
+                       " exit 1",
+                       " )\n\n",
+                "      ## # Install admin-groups keys to provisioning user\n",
+                "      ## curl -skL ",
+                          { "Ref": "AdminPubkeyURL" },
+                          " -o /tmp/admin.keys || err_exit ",
+                          "'Could not download admin keys'\n",
+                "      ## cat /tmp/admin.keys >> /home/",
+                          { "Ref": "ProvisionUser" },
+                          "/.ssh/authorized_keys || err_exit ",
+                          "'Could not add admin keys'\n",
+                "      \n"
               ]
             ]
           }
         }
-      }
-    }
-  },
-  "Outputs": {
-    "GitLabInstanceId": {
-      "Value": { "Ref": "GitLabHost" },
-      "Description" : "Instance ID"
+      },
+      "Type": "AWS::EC2::Instance"
     }
   }
 }
