@@ -66,19 +66,7 @@
             "GitlabBucket",
             "BackupFolder",
             "GitRepoShareFsPath",
-            "GitRepoShareType",
-            "LdapHost",
-            "LdapPort",
-            "LdapUserPassword",
-            "LdapProxyUser",
-            "LdapSearchBase",
-            "LdapCrypt",
-            "SmtpRelayFqdn",
-            "SmtpRelayPort",
-            "SmtpAuthSender",
-            "SmtpSenderPass",
-            "SmtpMessageDomain",
-            "SmtpNoticeUser"
+            "GitRepoShareType"
           ]
         },
         {
@@ -326,39 +314,6 @@
       "Description": "Public/private key pairs allow you to securely connect to your instance after it launches",
       "Type": "AWS::EC2::KeyPair::KeyName"
     },
-    "LdapCrypt": {
-      "AllowedValues": [
-        "plain",
-        "ssl",
-        "tls"
-      ],
-      "Default": "plain",
-      "Description": "Encryption-method to use for securing the LDAP connection (\"plain\" is BASE64-encoded).",
-      "Type": "String"
-    },
-    "LdapHost": {
-      "AllowedPattern": "^[a-z0-9.-]*$",
-      "Description": "FQDN of the LDAP host/Active Directory server.",
-      "Type": "String"
-    },
-    "LdapPort": {
-      "AllowedPattern": "^[0-9]*$",
-      "Default": "389",
-      "Description": "TCP Port that the LDAP/AD service listens on.",
-      "Type": "String"
-    },
-    "LdapProxyUser": {
-      "Description": "Name of the user that has directory-lookup privileges on the target directory service. Use DN or UPN format.",
-      "Type": "String"
-    },
-    "LdapSearchBase": {
-      "Description": "DN of the LDAP search-scope.",
-      "Type": "String"
-    },
-    "LdapUserPassword": {
-      "Description": "Password of the user that has directory-lookup privileges on the target directory service.",
-      "Type": "String"
-    },
     "PgsqlVersion": {
       "AllowedValues": [
         "9.6.3",
@@ -422,36 +377,6 @@
       "Description": "TLD of the created EFS-endpoint.",
       "Type": "String"
     },
-    "SmtpAuthSender": {
-      "Description": "Authorized SMTP-relay sender ID.",
-      "Type": "String"
-    },
-    "SmtpMessageDomain": {
-      "Description": "@DOMAIN value for notification mails.",
-      "Type": "String"
-    },
-    "SmtpNoticeUser": {
-      "Description": "User to set in outbound messages \"From:\" address.",
-      "Type": "String"
-    },
-    "SmtpRelayFqdn": {
-      "Description": "FQDN of the SMTP-relay host.",
-      "Type": "String"
-    },
-    "SmtpRelayPort": {
-      "AllowedValues": [
-        "25",
-        "465",
-        "587"
-      ],
-      "Default": "465",
-      "Description": "Listener-port of the SMTP-relay host.",
-      "Type": "String"
-    },
-    "SmtpSenderPass": {
-      "Description": "Password or the authorized SMTP-relay sender ID.",
-      "Type": "String"
-    },
     "SubNetId": {
       "Description": "Subnet to associate to the Instance",
       "Type": "AWS::EC2::Subnet::Id"
@@ -512,12 +437,6 @@
           },
           "InstanceType": { "Ref": "InstanceType" },
           "KeyPairName": { "Ref": "KeyPairName" },
-          "LdapCrypt": { "Ref": "LdapCrypt" },
-          "LdapHost": { "Ref": "LdapHost" },
-          "LdapPort": { "Ref": "LdapPort" },
-          "LdapProxyUser": { "Ref": "LdapProxyUser" },
-          "LdapSearchBase": { "Ref": "LdapSearchBase" },
-          "LdapUserPassword": { "Ref": "LdapUserPassword" },
           "NoPublicIp": "true",
           "NoReboot": "true",
           "PipIndexFips": { "Ref": "PipIndexFips" },
@@ -548,12 +467,6 @@
             ]
           },
           "ServerHostname": { "Ref": "ServerHostname" },
-          "SmtpAuthSender": { "Ref": "SmtpAuthSender" },
-          "SmtpMessageDomain": { "Ref": "SmtpMessageDomain" },
-          "SmtpNoticeUser": { "Ref": "SmtpNoticeUser" },
-          "SmtpRelayFqdn": { "Ref": "SmtpRelayFqdn" },
-          "SmtpRelayPort": { "Ref": "SmtpRelayPort" },
-          "SmtpSenderPass": { "Ref": "SmtpSenderPass" },
           "SubNetId": { "Ref": "SubNetId" }
         },
         "TemplateURL": { "Ref": "GitlabEc2Template" },
