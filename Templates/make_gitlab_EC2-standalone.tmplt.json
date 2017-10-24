@@ -123,6 +123,11 @@
       "Default": "",
       "AllowedPattern": "^$|^http://.*$|^https://.*$"
     },
+    "ConfigBucketPath": {
+      "Default": "",
+      "Description": "S3 bucket-path to GitLab configuration template-file.",
+      "Type": "String"
+    },
     "DnsSuffix": {
       "Description": "Suffix for GitLab's hostname and DNS record",
       "Type": "String",
@@ -369,16 +374,10 @@
       },
       "Metadata": {
         "AWS::CloudFormation::Authentication": {
-          "Fn::If": [
-            "AssignInstanceRole",
-            {
-              "Ec2IamRole": {
-                "roleName": { "Ref": "InstanceRole" },
-                "type": "S3"
-              }
-            },
-            { "Ref": "AWS::NoValue" }
-          ]
+          "Ec2IamRole": {
+            "roleName": { "Ref": "InstanceRole" },
+            "type": "S3"
+          }
         },
         "AWS::CloudFormation::Init": {
           "admkey-install": {
@@ -407,6 +406,7 @@
             "launch": [
               "setup",
               "admkey-install",
+              "gitlab-tmplt-fetch",
               "osprep-launch",
               "watchmaker-install",
               "watchmaker-launch",
@@ -429,6 +429,7 @@
             "update": [
               "setup",
               "admkey-install",
+              "gitlab-tmplt-fetch",
               "osprep-launch",
               "watchmaker-install",
               "watchmaker-update",
@@ -476,6 +477,22 @@
                   ]
                 },
                 "ignoreErrors": "true"
+              }
+            }
+          },
+          "gitlab-tmplt-fetch": {
+            "commands": {
+              "template-fetch": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "aws s3 cp s3://",
+                      { "Ref": "ConfigBucketPath" },
+                      " /etc/cfn/gitlab.rb.tmplt"
+                    ]
+                  ]
+                }
               }
             }
           },
