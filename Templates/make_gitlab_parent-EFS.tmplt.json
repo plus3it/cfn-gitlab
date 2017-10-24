@@ -94,6 +94,52 @@
       ]
     }
   },
+  "Outputs": {
+    "GitLabInstanceId": {
+      "Description": "Instance ID of the GitLab EC2 instance.",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-InstanceId"
+        }
+      },
+      "Value": {
+        "Fn::GetAtt": [ "Ec2Res", "Outputs.GitLabInstanceId" ]
+      }
+    },
+    "GitLabBucketName": {
+      "Description": "The GitLab EC2 instance's bucket-name.",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-BucketName"
+        }
+      },
+      "Value": {
+        "Fn::GetAtt": [ "S3Res", "Outputs.GitlabBucketName" ]
+      }
+    },
+    "InstanceRoleProfile": {
+      "Description": "Role-profile to apply to GitLab EC2 instance.",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-ProfileName"
+        }
+      },
+      "Value": {
+        "Fn::GetAtt": [ "IamRes", "Outputs.InstanceRoleProfile" ]
+      }
+    },
+    "RdsFqdn": {
+      "Description": "FQDN of Stack's RDS instance.",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-RdsFqdn"
+        }
+      },
+      "Value": {
+        "Fn::GetAtt": [ "RdsRes", "Outputs.RdsEndpointAddress" ]
+      }
+    }
+  },
   "Parameters": {
     "AdminPubkeyURL": {
       "AllowedPattern": "^$|^http://.*$|^https://.*$",
