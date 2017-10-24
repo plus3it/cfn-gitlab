@@ -163,4 +163,4 @@ echo "Restart successful."
 # Export any saved SSH keys
 #####
 echo "yes" | gitlab-rake gitlab:shell:setup && echo "Success!" || \
-  err_exit 'Failure during restoration of git-users'\'' SSH pubkeys'
+  echo 'Failure during restoration of git-users'\'' SSH pubkeys (new install?)'
