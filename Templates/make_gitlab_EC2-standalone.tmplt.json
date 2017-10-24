@@ -54,7 +54,7 @@
     "AWS::CloudFormation::Interface": {}
   },
   "Outputs": {
-    "GitlabInstanceId": {
+    "GitLabInstanceId": {
       "Description": "Instance ID",
       "Value": { "Ref": "GitLabHost" }
     }
