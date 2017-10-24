@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "This template coordinates the running of the GitLab SecurityGroup, S3 and IAM templates.",
+  "Description": "This template coordinates the running of the GitLab SecurityGroup, S3, RDS, IAM, EFS, EC2 and ELB templates.",
   "Metadata": {
     "AWS::CloudFormation::Interface": {
       "ParameterGroups": [

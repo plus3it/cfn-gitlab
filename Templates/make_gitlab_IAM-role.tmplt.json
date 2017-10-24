@@ -14,7 +14,7 @@
       ]
     }
   },
-  "Description": "This template sets up the IAM role needed by an GitLab instance",
+  "Description": "This template sets up the IAM role needed by a GitLab instance",
   "Outputs": {
     "InstanceRole": {
       "Description": "Name of the instance role",

@@ -42,7 +42,7 @@
       ]
     }
   },
-  "Description": "This template deploys a STIG-hardened Linux EL7 instance to host the GitLab service.",
+  "Description": "This template deploys a STIG-hardened Enterprise Linux 7 instance to host the GitLab service.",
   "Mappings": {
     "Distro2RootDevice": {
       "AmazonLinux": { "DeviceName": "xvda" },

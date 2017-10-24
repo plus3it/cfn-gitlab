@@ -9,7 +9,7 @@
       ]
     }
   },
-  "Description": "This template deployes a small, single-AZ PGSQL database to support GitLab.",
+  "Description": "This template deploys a PGSQL database to host GitLab configuration data.",
   "Mappings": {},
   "Metadata": {},
   "Outputs": {

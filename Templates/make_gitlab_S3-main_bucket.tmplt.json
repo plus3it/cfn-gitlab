@@ -10,7 +10,7 @@
       } ]
     }
   },
-  "Description": "This template sets up the S3 Bucket used by an GitLab instance.",
+  "Description": "This template sets up the S3 Bucket used by a GitLab instance.",
   "Parameters": {
     "GitlabBucket": {
       "Description": "S3 Bucket to host GitLab content.",
