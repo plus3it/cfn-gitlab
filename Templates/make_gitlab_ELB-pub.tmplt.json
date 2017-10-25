@@ -7,7 +7,7 @@
       ]
     }
   },
-  "Description": "Template for creating a public ELB for users to connect through which to connect to the GitLab service.",
+  "Description": "Template for creating a public-facing ELB for users to connect through to the GitLab service.",
   "Metadata": {
     "AWS::CloudFormation::Interface": {
       "ParameterGroups": [

@@ -4,6 +4,12 @@
 #
 #################################################################
 PROGNAME=$(basename "${0}")
+# Read in template envs we might want to use
+while read -r GLENV
+do
+   # shellcheck disable=SC2163
+   export "${GLENV}"
+done < /etc/cfn/GitLab.envs
 GLCONFIG="/etc/gitlab/gitlab.rb"
 RUNDATE=$(date "+%Y%m%d%H%M")
 GITLAB_EXTERNURL="${GITLAB_EXTERNURL:-UNDEF}"
@@ -19,13 +25,6 @@ GITLAB_AD_BINDPASS="${GITLAB_AD_BINDPASS:-UNDEF}"
 GITLAB_AD_SRCHBASE="${GITLAB_AD_SRCHBASE:-UNDEF}"
 SHAREURI=${GITLAB_SHARE_URI:-UNDEF}
 SHARETYPE=${GITLAB_SHARE_TYPE:-UNDEV}
-SMTP_FQDN="${GITLAB_SMTP_RELAY:-UNDEF}"
-SMTP_PORT="${GITLAB_SMTP_PORT:-UNDEF}"
-SMTP_USER="${GITLAB_SMTP_USER:-UNDEF}"
-SMTP_PASS="${GITLAB_SMTP_PASS:-UNDEF}"
-SMTP_FROMDOM="${GITLAB_SMTP_FROM_DOM:-UNDEF}"
-SMTP_FROMUSR="${GITLAB_SMTP_FROM_USER:-UNDEF}"
-SMTP_RPLYUSR="noreply@${SMTP_FROMDOM}"
 
 #
 # Log errors and exit
@@ -73,16 +72,8 @@ function ValidShare {
 # Ensure we've passed an necessary ENVs
 #####
 if [[ ${GITLAB_EXTERNURL} = UNDEF ]] ||
-   [[ ${GITLAB_DATABASE} = UNDEF ]] ||
-   [[ ${GITLAB_DBUSER} = UNDEF ]] ||
    [[ ${GITLAB_PASSWORD} = UNDEF ]] ||
-   [[ ${GITLAB_DBHOST} = UNDEF ]] ||
-   [[ ${GITLAB_AD_HOST} = UNDEF ]] ||
-   [[ ${GITLAB_AD_PORT} = UNDEF ]] ||
-   [[ ${GITLAB_AD_BINDCRYPT} = UNDEF ]] ||
-   [[ ${GITLAB_AD_BINDUSER} = UNDEF ]] ||
-   [[ ${GITLAB_AD_BINDPASS} = UNDEF ]] ||
-   [[ ${GITLAB_AD_SRCHBASE} = UNDEF ]]
+   [[ ${GITLAB_DBHOST} = UNDEF ]]
 then
    err_exit "Required env var(s) not defined. Aborting!"
 fi
@@ -107,46 +98,11 @@ install -b -m 0600 /dev/null ${GLCONFIG} || \
 chcon "--reference=${GLCONFIG}.bak-${RUNDATE}" ${GLCONFIG} || \
    err_exit "Failed to set SELinx label on new/null config file"
 
-cat << EOF > ${GLCONFIG}
-external_url 'https://${GITLAB_EXTERNURL}'
-nginx['listen_addresses'] = ["0.0.0.0", "[::]"]
-nginx['listen_port'] = 80
-nginx['listen_https'] = false
-postgresql['enable'] = false
-gitlab_rails['db_adapter'] = "postgresql"
-gitlab_rails['db_encoding'] = "unicode"
-gitlab_rails['db_database'] = "${GITLAB_DATABASE}"
-gitlab_rails['db_username'] = "${GITLAB_DBUSER}"
-gitlab_rails['db_password'] = "${GITLAB_PASSWORD}"
-gitlab_rails['db_host'] = "${GITLAB_DBHOST}"
-gitlab_rails['smtp_enable'] = true
-gitlab_rails['smtp_address'] = "${SMTP_FQDN}"
-gitlab_rails['smtp_port'] = "${SMTP_PORT}"
-gitlab_rails['smtp_user_name'] = "${SMTP_USER}"
-gitlab_rails['smtp_password'] = "${SMTP_PASS}"
-gitlab_rails['smtp_domain'] = "${SMTP_FROMDOM}"
-gitlab_rails['smtp_authentication'] = "login"
-gitlab_rails['smtp_enable_starttls_auto'] = true
-gitlab_rails['gitlab_email_from'] = "${SMTP_FROMUSR}"
-gitlab_rails['gitlab_email_reply_to'] = "${SMTP_RPLYUSR}"
-gitlab_rails['ldap_enabled'] = true
-gitlab_rails['ldap_servers'] = YAML.load <<-EOS
-main:
-  label: 'ActiveDirectory'
-  host: '${GITLAB_AD_HOST}'
-  port: ${GITLAB_AD_PORT}
-  method: '${GITLAB_AD_BINDCRYPT}'
-  bind_dn: '${GITLAB_AD_BINDUSER}'
-  password: '${GITLAB_AD_BINDPASS}'
-  timeout: 10
-  active_directory: true
-  uid: 'sAMAccountName'
-  allow_username_or_email_login: false
-  block_auto_created_users: false
-  base: '${GITLAB_AD_SRCHBASE}'
-  uid: 'sAMAccountName'
-EOS
-EOF
+sed '{
+  s/__PROXY_URL__/'"${GITLAB_EXTERNURL}"'/
+  s/__RDS_DB_PASSWD__/'"${GITLAB_PASSWORD}"'/
+  s/__RDS_DB_FQDN__/'"${GITLAB_DBHOST}"'/
+}' /etc/cfn/gitlab.rb.tmplt > ${GLCONFIG}
 
 # shellcheck disable=SC2181
 if [[ $? -eq 0 ]]
@@ -207,4 +163,4 @@ echo "Restart successful."
 # Export any saved SSH keys
 #####
 echo "yes" | gitlab-rake gitlab:shell:setup && echo "Success!" || \
-  err_exit 'Failure during restoration of git-users'\'' SSH pubkeys'
+  echo 'Failure during restoration of git-users'\'' SSH pubkeys (new install?)'

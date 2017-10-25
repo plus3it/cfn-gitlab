@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Template for creating Security groups used to support Atlassian's GitLab.",
+  "Description": "Template for creating Security groups used to support GitLab.",
   "Mappings": {},
   "Conditions": {},
   "Outputs": {

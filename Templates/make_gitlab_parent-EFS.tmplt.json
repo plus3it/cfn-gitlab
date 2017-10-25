@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "This template coordinates the running of the GitLab SecurityGroup, S3 and IAM templates.",
+  "Description": "This template coordinates the running of the GitLab SecurityGroup, S3, RDS, IAM, EFS, EC2 and ELB templates.",
   "Metadata": {
     "AWS::CloudFormation::Interface": {
       "ParameterGroups": [
@@ -66,19 +66,7 @@
             "GitlabBucket",
             "BackupFolder",
             "GitRepoShareFsPath",
-            "GitRepoShareType",
-            "LdapHost",
-            "LdapPort",
-            "LdapUserPassword",
-            "LdapProxyUser",
-            "LdapSearchBase",
-            "LdapCrypt",
-            "SmtpRelayFqdn",
-            "SmtpRelayPort",
-            "SmtpAuthSender",
-            "SmtpSenderPass",
-            "SmtpMessageDomain",
-            "SmtpNoticeUser"
+            "GitRepoShareType"
           ]
         },
         {
@@ -104,6 +92,43 @@
           ]
         }
       ]
+    }
+  },
+  "Outputs": {
+    "GitLabBucketName": {
+      "Description": "The GitLab EC2 instance's bucket-name.",
+      "Export": {
+        "Name": { "Fn::Sub": "${AWS::StackName}-BucketName" }
+      },
+      "Value": { "Fn::GetAtt": [ "S3Res", "Outputs.GitlabBucketName" ] }
+    },
+    "GitLabElbFqdn": {
+      "Description": "GitLab front-end's IP address",
+      "Export": {
+        "Name" : { "Fn::Sub": "${AWS::StackName}-ElbDnsName" }
+      },
+      "Value": { "Fn::GetAtt": [ "ElbRes", "Outputs.GitLabElbFqdn" ] }
+    },
+    "GitLabInstanceId": {
+      "Description": "Instance ID of the GitLab EC2 instance.",
+      "Export": {
+        "Name": { "Fn::Sub": "${AWS::StackName}-InstanceId" }
+      },
+      "Value": { "Fn::GetAtt": [ "Ec2Res", "Outputs.GitLabInstanceId" ] }
+    },
+    "InstanceRole": {
+      "Description": "Role-profile to apply to GitLab EC2 instance.",
+      "Export": {
+        "Name": { "Fn::Sub": "${AWS::StackName}-ProfileName" }
+      },
+      "Value": { "Fn::GetAtt": [ "IamRes", "Outputs.InstanceRole" ] }
+    },
+    "RdsFqdn": {
+      "Description": "FQDN of Stack's RDS instance.",
+      "Export": {
+        "Name": { "Fn::Sub": "${AWS::StackName}-RdsFqdn" }
+      },
+      "Value": { "Fn::GetAtt": [ "RdsRes", "Outputs.RdsEndpointAddress" ] }
     }
   },
   "Parameters": {
@@ -145,6 +170,11 @@
     },
     "BackupFolder": {
       "Description": "Folder in S3 Bucket to host backups of GitLab config-data",
+      "Type": "String"
+    },
+    "ConfigBucketPath": {
+      "Default": "",
+      "Description": "S3 bucket-path to GitLab configuration template-file.",
       "Type": "String"
     },
     "DbAdminName": {
@@ -326,39 +356,6 @@
       "Description": "Public/private key pairs allow you to securely connect to your instance after it launches",
       "Type": "AWS::EC2::KeyPair::KeyName"
     },
-    "LdapCrypt": {
-      "AllowedValues": [
-        "plain",
-        "ssl",
-        "tls"
-      ],
-      "Default": "plain",
-      "Description": "Encryption-method to use for securing the LDAP connection (\"plain\" is BASE64-encoded).",
-      "Type": "String"
-    },
-    "LdapHost": {
-      "AllowedPattern": "^[a-z0-9.-]*$",
-      "Description": "FQDN of the LDAP host/Active Directory server.",
-      "Type": "String"
-    },
-    "LdapPort": {
-      "AllowedPattern": "^[0-9]*$",
-      "Default": "389",
-      "Description": "TCP Port that the LDAP/AD service listens on.",
-      "Type": "String"
-    },
-    "LdapProxyUser": {
-      "Description": "Name of the user that has directory-lookup privileges on the target directory service. Use DN or UPN format.",
-      "Type": "String"
-    },
-    "LdapSearchBase": {
-      "Description": "DN of the LDAP search-scope.",
-      "Type": "String"
-    },
-    "LdapUserPassword": {
-      "Description": "Password of the user that has directory-lookup privileges on the target directory service.",
-      "Type": "String"
-    },
     "PgsqlVersion": {
       "AllowedValues": [
         "9.6.3",
@@ -422,36 +419,6 @@
       "Description": "TLD of the created EFS-endpoint.",
       "Type": "String"
     },
-    "SmtpAuthSender": {
-      "Description": "Authorized SMTP-relay sender ID.",
-      "Type": "String"
-    },
-    "SmtpMessageDomain": {
-      "Description": "@DOMAIN value for notification mails.",
-      "Type": "String"
-    },
-    "SmtpNoticeUser": {
-      "Description": "User to set in outbound messages \"From:\" address.",
-      "Type": "String"
-    },
-    "SmtpRelayFqdn": {
-      "Description": "FQDN of the SMTP-relay host.",
-      "Type": "String"
-    },
-    "SmtpRelayPort": {
-      "AllowedValues": [
-        "25",
-        "465",
-        "587"
-      ],
-      "Default": "465",
-      "Description": "Listener-port of the SMTP-relay host.",
-      "Type": "String"
-    },
-    "SmtpSenderPass": {
-      "Description": "Password or the authorized SMTP-relay sender ID.",
-      "Type": "String"
-    },
     "SubNetId": {
       "Description": "Subnet to associate to the Instance",
       "Type": "AWS::EC2::Subnet::Id"
@@ -486,6 +453,7 @@
               ]
             ]
           },
+          "ConfigBucketPath": { "Ref": "ConfigBucketPath" },
           "DnsSuffix": { "Ref": "DnsSuffix" },
           "EpelRepo": { "Ref": "EpelRepo" },
           "GitLabConfScript": { "Ref": "GitLabConfScript" },
@@ -512,14 +480,8 @@
           },
           "InstanceType": { "Ref": "InstanceType" },
           "KeyPairName": { "Ref": "KeyPairName" },
-          "LdapCrypt": { "Ref": "LdapCrypt" },
-          "LdapHost": { "Ref": "LdapHost" },
-          "LdapPort": { "Ref": "LdapPort" },
-          "LdapProxyUser": { "Ref": "LdapProxyUser" },
-          "LdapSearchBase": { "Ref": "LdapSearchBase" },
-          "LdapUserPassword": { "Ref": "LdapUserPassword" },
           "NoPublicIp": "true",
-          "NoReboot": "true",
+          "NoReboot": "false",
           "PipIndexFips": { "Ref": "PipIndexFips" },
           "PipRpm": { "Ref": "PipRpm" },
           "ProvisionUser": { "Ref": "ProvisionUser" },
@@ -548,13 +510,7 @@
             ]
           },
           "ServerHostname": { "Ref": "ServerHostname" },
-          "SmtpAuthSender": { "Ref": "SmtpAuthSender" },
-          "SmtpMessageDomain": { "Ref": "SmtpMessageDomain" },
-          "SmtpNoticeUser": { "Ref": "SmtpNoticeUser" },
-          "SmtpRelayFqdn": { "Ref": "SmtpRelayFqdn" },
-          "SmtpRelayPort": { "Ref": "SmtpRelayPort" },
-          "SmtpSenderPass": { "Ref": "SmtpSenderPass" },
-          "SubNetId": { "Ref": "SubNetId" }
+          "SubnetId": { "Ref": "SubNetId" }
         },
         "TemplateURL": { "Ref": "GitlabEc2Template" },
         "TimeoutInMinutes": "10"
@@ -612,6 +568,7 @@
     "IamRes": {
       "Properties": {
         "Parameters": {
+          "ConfigBucketPath": { "Ref": "ConfigBucketPath" },
           "GitlabBucketArn": {
             "Fn::GetAtt": [ "S3Res", "Outputs.GitlabBucketArn" ]
           },
