@@ -240,17 +240,10 @@ function err_exit {
 }
 
 # Create GitLab archive file
-printf "Creating backup archive-file in %s..." "\${SRCDIR}"
-gitlab-rake gitlab:backup:create SKIP=db STRATEGY=copy > /dev/null 2>&1 && \\
+printf "Creating backup archive-file in s3://%s..." "\${BUCKET}"
+gitlab-rake gitlab:backup:create STRATEGY=copy DIRECTORY="\${FOLDER}" CRON=1 &&\
   echo "Success" || err_exit 'Failed creating backup archive-file'
 
-BKUPS=(\$(echo \${SRCDIR}/*))
-for BKUP in \${BKUPS[@]}
-do
-   printf "Uploading %s to s3://%s/%s... " "\${BKUP}" "\${BUCKET}" "\${FOLDER}"
-   aws --region "\${REGION}" s3 mv "\${BKUP}" s3://"\${BUCKET}"/"\${FOLDER}"/ && \\
-     echo "Success" || echo 'Failed moving backup archive-file to S3'
-done
 EOF
 
 # Here documents are weird about status-capture, so...
@@ -261,7 +254,12 @@ then
 fi
 
 # Add backupscript to crontab
-(crontab -l 2>/dev/null; echo "0 23 * * * /usr/local/bin/backup.cron") | crontab -
+printf "Adding backup job to root's cron... "
+(
+  crontab -l 2>/dev/null
+  echo "0 23 * * * /usr/local/bin/backup.cron"
+) | \
+crontab - && echo "Success." || echo "Failed."
 
 # shellcheck disable=SC1091
 source /etc/profile.d/scl-ruby.sh || \
