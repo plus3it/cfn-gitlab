@@ -267,6 +267,7 @@
     },
     "RdsDbPasswd": {
       "Description": "RDS database-user login password.",
+      "NoEcho": "True",
       "Type": "String"
     },
     "SecurityGroupIds": {
