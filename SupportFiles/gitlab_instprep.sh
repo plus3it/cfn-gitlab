@@ -8,11 +8,7 @@
 PROGNAME=$(basename "${0}")
 LOGFACIL="user.err"
 # Read in template envs we might want to use
-while read -r GLENV
-do
-   # shellcheck disable=SC2163
-   export "${GLENV}"
-done < /etc/cfn/GitLab.envs
+source /etc/cfn/GitLab.envs
 KERNVERS=$(uname -r)
 if [[ ${KERNVERS} == *el7* ]]
 then
@@ -106,7 +102,7 @@ function InstGitlab {
    local RPMARR
       RPMARR=(
        $(
-         yum --showduplicates list available "${GITLAB_RPM_NAME}" | \
+         yum --showduplicates list available ${GITLAB_RPM_NAME} | \
          tail -1
         )
       )
