@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2015
+# shellcheck disable=SC2015,SC1091,SC2086
 #
 # Script to handle preparation of the instance for installing
 # and configuring GitLab

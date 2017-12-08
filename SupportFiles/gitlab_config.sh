@@ -104,6 +104,8 @@ sed '{
   s/__PROXY_URL__/'"${GITLAB_EXTERNURL}"'/
   s/__RDS_DB_PASSWD__/'"${GITLAB_PASSWORD}"'/
   s/__RDS_DB_FQDN__/'"${GITLAB_DBHOST}"'/
+  s/__RDS_DB_INSTANCE__/'"${GITLAB_DATABASE}"'/
+  s/__RDS_DB_ADMIN__/'"${GITLAB_DBUSER}"'/
   s/__BUCKET__/'"${GITLAB_BACKUP_BUCKET}"'/
   s/__REGION__/'"${GITLAB_REGION}"'/
 }' /etc/cfn/gitlab.rb.tmplt > ${GLCONFIG}
