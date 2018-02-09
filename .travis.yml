@@ -10,7 +10,6 @@ addons:
       - debian-sid    # Grab ShellCheck from the Debian repo
     packages:
       - shellcheck
-      - jq
 
 matrix:
   include:
@@ -19,15 +18,17 @@ matrix:
         - TESTCOMMAND="find $TRAVIS_BUILD_DIR -name '*.sh' -type f -print0 | xargs -0 -n1 -t shellcheck"
         - SHELLCHECK_OPTS="-s bash"
     - env:
-        - TESTENV=jq
+        - TESTENV=json-tool
         - TESTCOMMAND="find $TRAVIS_BUILD_DIR -name '*.json' -type f -print0 | xargs -0 -n1 -I {} -t jq --exit-status . {} > /dev/null"
 
 before_install:
   - echo $TESTCOMMAND
   - shellcheck --version
-  - jq --version
 
-install: true
+install:
+  # Download json parser
+  - curl -sO http://stedolan.github.io/jq/download/linux64/jq
+  - chmod +x $PWD/jq
 
 script:
   - bash -c "$TESTCOMMAND"

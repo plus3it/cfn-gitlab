@@ -12,10 +12,10 @@
             "SecurityGroupTemplate",
             "GitlabBucketTemplate",
             "GitlabEfsTemplate",
+            "GitlabElbTemplate",
             "GitlabRdsTemplate",
             "GitlabIamTemplate",
-            "GitlabEc2Template",
-            "GitlabElbTemplate"
+            "GitlabAsgTemplate"
           ]
         },
         {
@@ -23,21 +23,31 @@
             "default": "EC2 Parameters"
           },
           "Parameters": [
-            "InstanceType",
+            "ServerHostname",
+            "DnsSuffix",
             "AmiId",
+            "InstanceType",
+            "DesiredCapacity",
+            "MinCapacity",
             "ProvisionUser",
             "KeyPairName",
             "AdminPubkeyURL",
-            "ServerHostname",
-            "DnsSuffix",
-            "SubNetId",
-            "AppVolumeMountPath",
-            "AppVolumeSize",
-            "AppVolumeType",
-            "EpelRepo",
-            "PipRpm",
-            "PyStache",
-            "PipIndexFips"
+            "ToggleCfnInitUpdate",
+            "ToggleNewInstances"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Storage Parameters"
+          },
+          "Parameters": [
+            "GitRepoShareFsPath",
+            "GitRepoShareType",
+            "BackupVolumeMountPath",
+            "BackupVolumeSize",
+            "BackupVolumeType",
+            "GitlabBucket",
+            "BackupFolder"
           ]
         },
         {
@@ -56,17 +66,14 @@
         },
         {
           "Label": {
-            "default": "Git Build-Parameters"
+            "default": "GitLab Config Parameters"
           },
           "Parameters": [
-            "ProxyName",
-            "GitLabRpmName",
             "GitLabPrepScript",
             "GitLabConfScript",
-            "GitlabBucket",
-            "BackupFolder",
-            "GitRepoShareFsPath",
-            "GitRepoShareType"
+            "GitLabRpmSourceUri",
+            "GitLabRpmName",
+            "ConfigBucketPath"
           ]
         },
         {
@@ -74,10 +81,25 @@
             "default": "Proxy (ELB)"
           },
           "Parameters": [
+            "ProxyName",
             "GitlabElbSubnets",
             "GitLabServicePort",
             "GitLabListenerCert",
             "GitLabPassesSsh"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Watchmaker Config"
+          },
+          "Parameters": [
+            "WatchmakerConfig",
+            "WatchmakerEnvironment",
+            "WatchmakerS3Source",
+            "EpelRepo",
+            "PipRpm",
+            "PyStache",
+            "PipIndexFips"
           ]
         },
         {
@@ -109,14 +131,14 @@
       },
       "Value": { "Fn::GetAtt": [ "ElbRes", "Outputs.GitLabElbFqdn" ] }
     },
-    "GitLabInstanceId": {
-      "Description": "Instance ID of the GitLab EC2 instance.",
-      "Export": {
-        "Name": { "Fn::Sub": "${AWS::StackName}-InstanceId" }
-      },
-      "Value": { "Fn::GetAtt": [ "Ec2Res", "Outputs.GitLabInstanceId" ] }
-    },
     "InstanceRole": {
+      "Description": "Role-profile to apply to GitLab EC2 instance.",
+      "Export": {
+        "Name": { "Fn::Sub": "${AWS::StackName}-RoleName" }
+      },
+      "Value": { "Fn::GetAtt": [ "IamRes", "Outputs.InstanceRole" ] }
+    },
+    "InstanceRoleProfile": {
       "Description": "Role-profile to apply to GitLab EC2 instance.",
       "Export": {
         "Name": { "Fn::Sub": "${AWS::StackName}-ProfileName" }
@@ -142,21 +164,25 @@
       "Description": "ID of the AMI to launch",
       "Type": "String"
     },
-    "AppVolumeMountPath": {
-      "AllowedPattern": "/.*",
-      "Default": "/opt/gitlab",
-      "Description": "Filesystem path to mount the extra app volume. Ignored if \"AppVolumeDevice\" is blank",
+    "BackupFolder": {
+      "Description": "Folder in S3 Bucket to host backups of GitLab config-data",
       "Type": "String"
     },
-    "AppVolumeSize": {
+    "BackupVolumeMountPath": {
+      "AllowedPattern": "/.*",
+      "Default": "/opt/gitlab",
+      "Description": "Filesystem path to mount the extra app volume. Ignored if \"BackupVolumeDevice\" is blank",
+      "Type": "String"
+    },
+    "BackupVolumeSize": {
       "ConstraintDescription": "Must be between 5GB and 16384GB.",
       "Default": "10",
-      "Description": "Size in GB of the EBS volume to create. Ignored if \"AppVolumeDevice\" is blank",
+      "Description": "Size in GB of the EBS volume to create. Ignored if \"BackupVolumeDevice\" is blank",
       "MaxValue": "16384",
       "MinValue": "5",
       "Type": "Number"
     },
-    "AppVolumeType": {
+    "BackupVolumeType": {
       "AllowedValues": [
         "gp2",
         "io1",
@@ -165,11 +191,7 @@
         "standard"
       ],
       "Default": "gp2",
-      "Description": "Type of EBS volume to create. Ignored if \"AppVolumeDevice\" is blank",
-      "Type": "String"
-    },
-    "BackupFolder": {
-      "Description": "Folder in S3 Bucket to host backups of GitLab config-data",
+      "Description": "Type of EBS volume to create. Ignored if \"BackupVolumeDevice\" is blank",
       "Type": "String"
     },
     "ConfigBucketPath": {
@@ -226,6 +248,11 @@
     "DbNodeName": {
       "Description": "NodeName of the GitLab database.",
       "Type": "String"
+    },
+    "DesiredCapacity": {
+      "Default": "1",
+      "Description": "Desired number of instances in the Autoscaling Group",
+      "Type": "Number"
     },
     "DnsSuffix": {
       "ConstraintDescription": "An alphanumeric string to complete the domain portion of the instance's FQDN.",
@@ -294,22 +321,22 @@
     },
     "GitlabBucket": {
       "AllowedPattern": "^[a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9]*$|^$",
-      "Description": "S3 Bucket to host GitLab files",
+      "Description": "(Optional: one will be generated if not specified) Name of private S3 Bucket to host GitLab backups.",
       "Type": "String"
     },
     "GitlabBucketTemplate": {
       "AllowedPattern": "^$|^http://.*$|^https://.*$",
-      "Description": "URL to the child-template for creating the gitlab-bucket.",
+      "Description": "URL to the child-template for creating the GitLab backups-bucket.",
       "Type": "String"
     },
-    "GitlabEc2Template": {
+    "GitlabAsgTemplate": {
       "AllowedPattern": "^$|^http://.*$|^https://.*$",
       "Description": "URL to the child-template for creating the GitLab EC2 instance.",
       "Type": "String"
     },
     "GitlabEfsTemplate": {
       "AllowedPattern": "^$|^http://.*$|^https://.*$",
-      "Description": "URL to the child-template for creating the GitLab EFS service.",
+      "Description": "URL to the child-template for creating the GitLab EFS (persisted-storage) service.",
       "Type": "String"
     },
     "GitlabElbSubnets": {
@@ -323,7 +350,7 @@
     },
     "GitlabIamTemplate": {
       "AllowedPattern": "^$|^http://.*$|^https://.*$",
-      "Description": "URL to the child-template for creating the GitLab S3 bucket(s) IAM roles.",
+      "Description": "URL to the child-template for creating the GitLab service's IAM roles.",
       "Type": "String"
     },
     "GitlabRdsTemplate": {
@@ -341,13 +368,23 @@
         "t2.small",
         "t2.medium",
         "t2.large",
-        "c4.large",
-        "c4.xlarge",
-        "m3.xlarge",
+        "t2.xlarge",
+        "m5.large",
+        "m5.xlarge",
+        "m5.2xlarge",
+        "m5.4xlarge",
+        "c5.large",
+        "c5.xlarge",
+        "c5.2xlarge",
+        "c5.4xlarge",
         "m4.large",
         "m4.xlarge",
         "m4.2xlarge",
-        "r3.2xlarge"
+        "m4.4xlarge",
+        "c4.large",
+        "c4.xlarge",
+        "c4.2xlarge",
+        "c4.4xlarge"
       ],
       "Default": "t2.micro",
       "Description": "Amazon EC2 instance type",
@@ -355,13 +392,21 @@
     },
     "KeyPairName": {
       "Description": "Public/private key pairs allow you to securely connect to your instance after it launches",
-      "Type": "AWS::EC2::KeyPair::KeyName"
+      "Type": "String"
+    },
+    "MinCapacity": {
+      "Default": "1",
+      "Description": "Minimum number of instances in the Autoscaling Group",
+      "Type": "Number"
     },
     "PgsqlVersion": {
       "AllowedValues": [
+        "9.6.5",
         "9.6.3",
         "9.6.2",
         "9.6.1",
+        "9.5.10",
+        "9.5.9",
         "9.5.7",
         "9.5.6",
         "9.5.4",
@@ -420,26 +465,69 @@
       "Description": "TLD of the created EFS-endpoint.",
       "Type": "String"
     },
-    "SubNetId": {
-      "Description": "Subnet to associate to the Instance",
-      "Type": "AWS::EC2::Subnet::Id"
-    },
     "TargetVPC": {
       "AllowedPattern": "^vpc-[0-9a-f]*$",
       "Description": "ID of the VPC to deploy GitLab components into.",
       "Type": "AWS::EC2::VPC::Id"
+    },
+    "ToggleCfnInitUpdate": {
+      "AllowedValues": [
+        "A",
+        "B"
+      ],
+      "Default": "A",
+      "Description": "A/B toggle that forces a change to instance metadata, triggering the cfn-init update sequence",
+      "Type": "String"
+    },
+    "ToggleNewInstances": {
+      "AllowedValues": [
+        "A",
+        "B"
+      ],
+      "Default": "A",
+      "Description": "A/B toggle that forces a change to instance userdata, triggering new instances via the Autoscale update policy",
+      "Type": "String"
+    },
+    "WatchmakerConfig": {
+      "AllowedPattern": "^$|^http[s]?://.*$",
+      "Default": "",
+      "Description": "(Optional) URL to a Watchmaker config file",
+      "Type": "String"
+    },
+    "WatchmakerEnvironment": {
+      "AllowedValues": [
+        "",
+        "dev",
+        "test",
+        "prod"
+      ],
+      "Default": "",
+      "Description": "Environment in which the instance is being deployed",
+      "Type": "String"
+    },
+    "WatchmakerS3Source": {
+      "AllowedValues": [
+        "false",
+        "true"
+      ],
+      "Default": "false",
+      "Description": "Flag that tells watchmaker to use its instance role to retrieve watchmaker content from S3",
+      "Type": "String"
     }
   },
   "Resources": {
-    "Ec2Res": {
+    "AsgRes": {
       "Properties": {
         "Parameters": {
           "AdminPubkeyURL": { "Ref": "AdminPubkeyURL" },
           "AmiId": { "Ref": "AmiId" },
-          "AppVolumeDevice": "/dev/xvdf",
-          "AppVolumeMountPath": { "Ref": "AppVolumeMountPath" },
-          "AppVolumeSize": { "Ref": "AppVolumeSize" },
-          "AppVolumeType": { "Ref": "AppVolumeType" },
+          "AsgLoadBalancer":{
+            "Fn::GetAtt": [ "ElbRes", "Outputs.GitLabElbId" ]
+          },
+          "BackupVolumeDevice": "false",
+          "BackupVolumeMountPath": { "Ref": "BackupVolumeMountPath" },
+          "BackupVolumeSize": { "Ref": "BackupVolumeSize" },
+          "BackupVolumeType": { "Ref": "BackupVolumeType" },
           "BackupBucket": {
             "Fn::GetAtt": [ "S3Res", "Outputs.GitlabBucketName" ]
           },
@@ -455,7 +543,8 @@
             ]
           },
           "ConfigBucketPath": { "Ref": "ConfigBucketPath" },
-          "DnsSuffix": { "Ref": "DnsSuffix" },
+          "DesiredCapacity": { "Ref": "DesiredCapacity" },
+          "Domainname": { "Ref": "DnsSuffix" },
           "EpelRepo": { "Ref": "EpelRepo" },
           "GitLabConfScript": { "Ref": "GitLabConfScript" },
           "GitLabPrepScript": { "Ref": "GitLabPrepScript" },
@@ -476,13 +565,20 @@
               ]
             ]
           },
-          "InstanceRole": {
+          "Hostname": { "Ref": "ServerHostname" },
+          "InstanceRoleName": {
+            "Fn::GetAtt": [ "IamRes", "Outputs.InstanceRole" ]
+          },
+          "InstanceRoleProfile": {
             "Fn::GetAtt": [ "IamRes", "Outputs.InstanceRoleProfile" ]
           },
           "InstanceType": { "Ref": "InstanceType" },
           "KeyPairName": { "Ref": "KeyPairName" },
+          "MaxCapacity": "2",
+          "MinCapacity": { "Ref": "MinCapacity" },
           "NoPublicIp": "true",
           "NoReboot": "false",
+          "NoUpdates": "true",
           "PipIndexFips": { "Ref": "PipIndexFips" },
           "PipRpm": { "Ref": "PipRpm" },
           "ProvisionUser": { "Ref": "ProvisionUser" },
@@ -510,10 +606,19 @@
               ]
             ]
           },
-          "ServerHostname": { "Ref": "ServerHostname" },
-          "SubnetId": { "Ref": "SubNetId" }
+          "SubnetIds": {
+            "Fn::Join": [
+              ",",
+              { "Ref": "HaSvcSubnets" }
+            ]
+          },
+          "ToggleCfnInitUpdate": { "Ref": "ToggleCfnInitUpdate" },
+          "ToggleNewInstances": { "Ref": "ToggleNewInstances" },
+          "WatchmakerConfig": { "Ref": "WatchmakerConfig" },
+          "WatchmakerEnvironment": { "Ref": "WatchmakerEnvironment" },
+          "WatchmakerS3Source": { "Ref": "WatchmakerS3Source" }
         },
-        "TemplateURL": { "Ref": "GitlabEc2Template" },
+        "TemplateURL": { "Ref": "GitlabAsgTemplate" },
         "TimeoutInMinutes": "10"
       },
       "Type": "AWS::CloudFormation::Stack"
@@ -521,9 +626,7 @@
     "ElbRes": {
       "Properties": {
         "Parameters": {
-          "GitLabInstanceId": {
-            "Fn::GetAtt": [ "Ec2Res", "Outputs.GitLabInstanceId" ]
-          },
+          "GitLabInstanceId": "",
           "GitLabListenPort": "443",
           "GitLabListenerCert": { "Ref":  "GitLabListenerCert" },
           "GitLabPassesSsh": { "Ref": "GitLabPassesSsh" },

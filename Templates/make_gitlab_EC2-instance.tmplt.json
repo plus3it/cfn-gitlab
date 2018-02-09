@@ -182,13 +182,23 @@
         "t2.small",
         "t2.medium",
         "t2.large",
-        "c4.large",
-        "c4.xlarge",
-        "m3.xlarge",
+        "t2.xlarge",
+        "m5.large",
+        "m5.xlarge",
+        "m5.2xlarge",
+        "m5.4xlarge",
+        "c5.large",
+        "c5.xlarge",
+        "c5.2xlarge",
+        "c5.4xlarge",
         "m4.large",
         "m4.xlarge",
         "m4.2xlarge",
-        "r3.2xlarge"
+        "m4.4xlarge",
+        "c4.large",
+        "c4.xlarge",
+        "c4.2xlarge",
+        "c4.4xlarge"
       ]
     },
     "InstanceRole": {
@@ -262,7 +272,7 @@
     "RdsDbAdmin": {
       "Description": "RDS database-user name.",
       "Type": "String",
-      "AllowedPattern": "^[a-z]*$",
+      "AllowedPattern": "^[a-z][a-z0-9]*$",
       "ConstraintDescription": "Alphanumeric string representing the RDS database-user name."
     },
     "RdsDbPasswd": {
@@ -351,7 +361,10 @@
               {
                 "Fn::If": [
                   "UseCfnAppInstaller",
-                  "app-install",
+                  [
+                    "app-install",
+                    "enable-backups"
+                  ],
                   { "Ref" : "AWS::NoValue" }
                 ]
               },
@@ -372,6 +385,7 @@
               "watchmaker-install",
               "watchmaker-update",
               "app-install",
+              "enable-backups",
               "finalize",
               {
                 "Fn::If": [
@@ -381,6 +395,36 @@
                 ]
               }
             ]
+          },
+          "enable-backups": {
+            "files": {
+              "/etc/cron.d/GitLab_backups": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "# Run the hourly jobs\n",
+                      "SHELL=/bin/bash\n",
+                      "PATH=/sbin:/bin:/usr/sbin:/usr/bin\n",
+                      "AWS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
+                      "REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
+                      "# Use gitlab-rake to dump out the application",
+                       " contents to S3\n",
+                      "59 23 * * * root gitlab-rake gitlab:backup:create\n",
+                      "# Use s3 sync to copy config-data to \"Config\"",
+                       " folder in S3\n",
+                      "59 23 * * * root aws s3 sync --quiet --delete",
+                       " /etc/gitlab/ s3://",
+                       { "Ref" : "BackupBucket" },
+                       "/Config/\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000700",
+                "owner": "root"
+              }
+            }
           },
           "finalize": {
             "commands": {

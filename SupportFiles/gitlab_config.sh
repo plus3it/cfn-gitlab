@@ -27,6 +27,8 @@ GITLAB_AD_SRCHBASE="${GITLAB_AD_SRCHBASE:-UNDEF}"
 GITLAB_REGION="${GITLAB_AWS_REGION:-UNDEF}"
 SHAREURI=${GITLAB_SHARE_URI:-UNDEF}
 SHARETYPE=${GITLAB_SHARE_TYPE:-UNDEV}
+UPLOADDIR="/var/opt/gitlab/git-data/uploads"
+UPLOADLNK="/var/opt/gitlab/gitlab-rails/uploads"
 
 #
 # Log errors and exit
@@ -156,6 +158,51 @@ case ${SHARETYPE} in
       mount /var/opt/gitlab/git-data || err_exit "Failed to mount GitLab repository dir"
       ;;
 esac
+
+#
+# Ensure uploads directory is a symlink
+#####
+if [[ -d ${UPLOADDIR} ]]
+then
+   echo "${UPLOADDIR} already exists as directory"
+
+   if [[ -d "${UPLOADLNK}" ]]
+   then
+      echo "${UPLOADLNK} is a directory; should be link"
+      printf "Nuking %s... " "${UPLOADLNK}"
+      rm -rf "${UPLOADLNK}" && echo "Success" || \
+        err_exit "Failed deleting ${UPLOADLNK}"
+      printf "Recreating %s as symlink to %s... " "${UPLOADLNK}" "${UPLOADDIR}"
+      ln -s "${UPLOADDIR}" "${UPLOADLNK}" && echo "Success" || \
+        err_exit "Failed creating ${UPLOADLNK} as symlink"
+
+   fi
+else
+   printf "Creating %s... " "${UPLOADDIR}"
+   install -d -m 000700 -o git -g git "${UPLOADDIR}" && echo "Success" || \
+     err_exit "Failed creating ${UPLOADDIR}"
+
+   if [[ -d "${UPLOADLNK}" ]]
+   then
+      printf "Moving data from %s to %s..." "${UPLOADLNK}" "${UPLOADDIR}"
+      (
+       cd "${UPLOADLNK}" && tar cf - . | ( cd "${UPLOADDIR}" && tar xf - )
+      ) && echo "Done" || echo "Some failures detected"
+
+      printf "Nuking %s... " "${UPLOADLNK}"
+      rm -rf "${UPLOADLNK}" && echo "Success" || \
+        err_exit "Failed deleting ${UPLOADLNK}"
+      printf "Recreating %s as symlink to %s... " "${UPLOADLNK}" "${UPLOADDIR}"
+      ln -s "${UPLOADDIR}" "${UPLOADLNK}" && echo "Success" || \
+        err_exit "Failed creating ${UPLOADLNK} as symlink"
+
+      # Aesthetics...
+      chown -h git:git "${UPLOADLNK}"
+   elif [[ -h "${UPLOADLNK}" ]]
+   then
+      echo "${UPLOADLNK} is already a sym-link. Leaving as is."
+   fi
+fi
 
 #
 # Restart service to get new config bits

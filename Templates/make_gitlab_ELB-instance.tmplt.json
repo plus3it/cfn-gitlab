@@ -33,6 +33,13 @@
         "Name" : { "Fn::Sub": "${AWS::StackName}-ElbDnsName" }
       },
       "Value": { "Fn::GetAtt": [ "GitLabPubElb", "DNSName" ] }
+    },
+    "GitLabElbId": {
+      "Description": "GitLab front-end's service address",
+      "Export": {
+        "Name" : { "Fn::Sub": "${AWS::StackName}-ElbId" }
+      },
+      "Value": { "Ref": "GitLabPubElb" }
     }
   },
   "Parameters": {
@@ -101,7 +108,9 @@
           "Timeout": "5",
           "UnhealthyThreshold": "2"
         },
-        "Instances": [ { "Ref": "GitLabInstanceId" } ],
+        "Instances": [
+          { "Ref": "GitLabInstanceId" }
+        ],
         "Listeners": [
           {
             "Fn::If": [
