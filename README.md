@@ -20,3 +20,6 @@ The EC2 template links out to two support scripts as well as a STIG-hardening ut
 Administrators can deploy the latest version of GitLab or specific versions targeted to the major, major.minor or major.minor.point release. Release-targeting is designed to support specific deployment-environments' needs with respect to controlled-release methodologies. It is primarily expected that administrators will target major releases or major.minor releases. Targeting dot-releases are primarily for pre-upgrade testing and to support upgrades from one major-release to another (via parallel standup and migration).
 
 The templates and scripts will enable GitLab administrators to more-easily use a "redeploy to upgrade" model - whether upgrading the underlying operating system or the GitLab software itself. 
+
+![Build Status](https://travis-ci.org/plus3it/dotc-gitlab.svg?branch=master)
+

@@ -1,0 +1,3 @@
+### Security-Group Template
+
+The overall service-design for these templates' deployment of GitLab is "siloed". That is to say, it is expected that all AWS-hosted components will be placed into an isolated security-context. All elements will have sufficient permissions to "talk" to each other. However, external systems' access to the service components will be indirect (typically via the [ELB](ELBtemplate.md)). The [make_gitlab_S3-main_bucket.tmplt.json](/Templates/make_gitlab_S3-main_bucket.tmplt.json) is used to create the requisite network-security controls for the GitLab service-components to communicate with each other but not the outside world.
