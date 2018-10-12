@@ -38,17 +38,12 @@
       "Description": "S3 bucket-path to GitLab configuration template-file.",
       "Type": "String"
     },
-    "GitlabBucketArn": {
-      "Description": "Arn of the S3 Bucket used to host GitLab content.",
+    "GitlabBucketName": {
+      "Description": "Name of the S3 Bucket used to host GitLab content.",
       "Type": "String"
     },
     "RolePrefix": {
       "Description": "Prefix to apply to IAM role to make things a bit prettier (optional).",
-      "Type": "String"
-    },
-    "ServiceTld": {
-      "Default": "amazonaws.com",
-      "Description": "TLD of the IAM service-trust.",
       "Type": "String"
     }
   },
@@ -65,14 +60,30 @@
               ],
               "Effect": "Allow",
               "Resource": [
-                { "Fn::Join": [ "", [
-                      { "Ref": "GitlabBucketArn" },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      { "Ref": "AWS::Partition" },
+                      ":s3:::",
+                      { "Ref": "GitlabBucketName" },
                       ""
-                ]]},
-                { "Fn::Join": [ "", [
-                      { "Ref": "GitlabBucketArn" },
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      { "Ref": "AWS::Partition" },
+                      ":s3:::",
+                      { "Ref": "GitlabBucketName" },
                       "/*"
-                ]]}
+                    ]
+                  ]
+                }
               ],
               "Sid": "BackupsAccess"
             },
@@ -208,7 +219,7 @@
                     ".",
                     [
                       "ec2",
-                      { "Ref": "ServiceTld" }
+                      { "Ref": "AWS::URLSuffix" }
                     ]
                   ]
                 }
