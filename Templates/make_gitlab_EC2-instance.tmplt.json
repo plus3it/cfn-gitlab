@@ -29,6 +29,44 @@
         { "Fn::Equals": [ { "Ref": "NoUpdates" }, "true" ] }
       ]
     },
+    "NotGenFive": {
+      "Fn::Not": [
+        {
+          "Fn::Or": [
+            {
+              "Fn::Equals": [
+                { "Fn::Select": [
+                    "0",
+                    { "Fn::Split": [ ".", { "Ref": "InstanceType" } ] }
+                  ]
+                },
+                "c5"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                { "Fn::Select": [
+                    "0",
+                    { "Fn::Split": [ ".", { "Ref": "InstanceType" } ] }
+                  ]
+                },
+                "m5"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                { "Fn::Select": [
+                    "0",
+                    { "Fn::Split": [ ".", { "Ref": "InstanceType" } ] }
+                  ]
+                },
+                "t3"
+              ]
+            }
+          ]
+        }
+      ]
+    },
     "Reboot": {
       "Fn::Not": [
         { "Fn::Equals": [ { "Ref": "NoReboot" }, "true" ] }
@@ -104,45 +142,14 @@
   },
   "Description": "This template deploys a STIG-hardened Enterprise Linux 7 instance to host the GitLab service.",
   "Mappings": {
-    "InstanceTypeMap": {
-      "c4.large": {
-        "SupportsNvme": "false"
+    "InstanceTypeCapabilities": {
+      "IsGenFive": {
+        "ExternDeviceName": "/dev/xvdf",
+        "InternDeviceName": "/dev/nvme1n1"
       },
-      "c4.xlarge": {
-        "SupportsNvme": "false"
-      },
-      "c5.large": {
-        "SupportsNvme": "true"
-      },
-      "c5.xlarge": {
-        "SupportsNvme": "true"
-      },
-      "m4.large": {
-        "SupportsNvme": "false"
-      },
-      "m4.xlarge": {
-        "SupportsNvme": "false"
-      },
-      "m5.large": {
-        "SupportsNvme": "true"
-      },
-      "m5.xlarge": {
-        "SupportsNvme": "true"
-      },
-      "t2.large": {
-        "SupportsNvme": "false"
-      },
-      "t2.medium": {
-        "SupportsNvme": "false"
-      },
-      "t2.micro": {
-        "SupportsNvme": "false"
-      },
-      "t2.small": {
-        "SupportsNvme": "false"
-      },
-      "t2.xlarge": {
-        "SupportsNvme": "false"
+      "PreGenFive": {
+        "ExternDeviceName": "/dev/xvdf",
+        "InternDeviceName": "/dev/xvdf"
       }
     }
   },
@@ -1494,6 +1501,12 @@
                 "hostname: ",
                   { "Ref": "WatchmakerComputerName" },
                 "\n",
+                "\n",
+                "growpart:\n",
+                "  mode: auto\n",
+                "  devices: [ '/dev/xvda', '/dev/xvda2', '/dev/nvme0n1p2' ]\n",
+                "  ignore_growroot_disabled: false\n",
+                "\n",
                 {
                   "Fn::If": [
                     "CreateAppVolume",
@@ -1505,9 +1518,21 @@
                           "- cloud-init-per instance mkfs-appvolume mkfs -t ext4 ",
                           {
                             "Fn::If": [
-                              "SupportsNvme",
-                              "/dev/nvme1n1",
-                              "/dev/xvdf"
+                              "NotGenFive",
+                              {
+                                "Fn::FindInMap": [
+                                  "InstanceTypeCapabilities",
+                                  "PreGenFive",
+                                  "InternDeviceName"
+                                ]
+                              },
+                              {
+                                "Fn::FindInMap": [
+                                  "InstanceTypeCapabilities",
+                                  "IsGenFive",
+                                  "InternDeviceName"
+                                ]
+                              }
                             ]
                           },
                           "\n",
@@ -1515,12 +1540,25 @@
                           "- [ ",
                           {
                             "Fn::If": [
-                              "SupportsNvme",
-                              "/dev/nvme1n1",
-                              "/dev/xvdf"
+                              "NotGenFive",
+                              {
+                                "Fn::FindInMap": [
+                                  "InstanceTypeCapabilities",
+                                  "PreGenFive",
+                                  "InternDeviceName"
+                                ]
+                              },
+                              {
+                                "Fn::FindInMap": [
+                                  "InstanceTypeCapabilities",
+                                  "IsGenFive",
+                                  "InternDeviceName"
+                                ]
+                              }
                             ]
                           },
                           ", ",
+
                           { "Ref": "AppVolumeMountPath" },
                           " ]\n"
                         ]
@@ -1537,6 +1575,19 @@
                 "Content-Disposition: attachment; filename=\"script.sh\"\n",
                 "\n",
                 "#!/bin/bash -xe\n\n",
+                "\n",
+                "# Extend any available LVM PVs\n",
+                "if [[ -x $( which pvs ) ]]\n",
+                "then\n",
+                "   LVMPVS=($(pvs --noheadings -o pv_name))\n",
+                "   for PV in \"${LVMPVS[@]}\"\n",
+                "   do\n",
+                "      pvresize ${PV}\n",
+                "   done\n",
+                "\n",
+                "   vgdisplay -s\n",
+                "fi\n",
+                "\n",
                 "# Export AWS ENVs\n",
                 "test -r /etc/aws/models/endpoints.json && export AWS_DATA_PATH=/etc/aws/models || true\n",
                 "export AWS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
@@ -1544,6 +1595,11 @@
                 "export AWS_DEFAULT_REGION=",
                 { "Ref": "AWS::Region" },
                 "\n\n",
+                "# Add local hostname binding\n",
+                "printf \"%s\\t%s %s\\n\" ",
+                "\"$( ip addr show eth0 | sed -n '/eth0$/p' | sed -e 's/^ *inet *//' -e 's#/.*$##' )\" ",
+                "\"$( hostname -f)\" \"$( hostname -s )\" >> /etc/hosts\n",
+                "\n",
                 "# Get pip\n",
                 "PYPI_URL=",
                 { "Ref": "PypiIndexUrl" },
