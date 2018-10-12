@@ -17,7 +17,47 @@
   },
   "Description": "This template deploys a PGSQL database to host GitLab configuration data.",
   "Mappings": {},
-  "Metadata": {},
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Label": {
+            "default": "RDS Configuration"
+          },
+          "Parameters": [
+            "PgsqlVersion",
+            "DbInstanceType",
+            "DbIsMultiAz",
+            "DbDataSize",
+            "DbStorageType",
+            "DbStorageIops",
+            "DbSnapshotId"
+          ]
+        },
+        {
+          "Label": {
+            "default": "RDS Connection Information"
+          },
+          "Parameters": [
+            "DbNodeName",
+            "DbInstanceName",
+            "DbAdminName",
+            "DbAdminPass"
+          ]
+        },
+        {
+          "Label": {
+            "default": "RDS Network Configuration"
+          },
+          "Parameters": [
+            "TargetVPC", 
+            "DbSubnets",
+            "DbSecurityGroup"
+          ]
+        }
+      ]
+    }
+  },
   "Outputs": {
     "RdsDbInstanceName": {
       "Description": "RDS DB's instance-name.",
@@ -60,7 +100,7 @@
       "Type": "Number"
     },
     "DbInstanceName": {
-      "Description": "Instance-name of the GitLab database.",
+      "Description": "Instance-name of the GitLab database (Ignored if \"DbSnapshotId\" is non-null).",
       "Type": "String"
     },
     "DbInstanceType": {
@@ -100,7 +140,7 @@
       "Type": "String"
     },
     "DbNodeName": {
-      "Description": "NodeName of the GitLab database.",
+      "Description": "NodeName of the GitLab database (Optional: random one will be created if left blank).",
       "Type": "String"
     },
     "DbSecurityGroup": {
