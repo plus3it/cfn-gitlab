@@ -42,6 +42,7 @@
     },
     "DbAdminPass": {
       "Description": "Password of the GitLab master database-user.",
+      "NoEcho": "true",
       "Type": "String"
     },
     "DbDataSize": {
