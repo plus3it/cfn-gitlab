@@ -3,32 +3,31 @@
   "Conditions": {
     "PrettyRole": {
       "Fn::Not": [
-        {
-          "Fn::Equals": [
-            { "Ref": "RolePrefix" },
-            ""
-          ]
-        }
+        { "Fn::Equals": [ { "Ref": "RolePrefix" }, "" ] }
       ]
     }
   },
   "Description": "This template sets up the IAM role needed by a GitLab instance",
   "Outputs": {
-    "InstanceRole": {
-      "Description": "Name of the instance role",
-      "Value": { "Ref": "InstanceRole" }
-    },
     "InstanceRoleArn": {
       "Description": "ARN of the instance role",
-      "Value": {
-        "Fn::GetAtt": [
-          "InstanceRole",
-          "Arn"
-        ]
-      }
+      "Export": {
+        "Name": { "Fn::Sub": "${AWS::StackName}-InstanceRoleArn" }
+      },
+      "Value": { "Fn::GetAtt": [ "InstanceRole", "Arn" ] }
+    },
+    "InstanceRoleName": {
+      "Description": "Name of the instance role",
+      "Export": {
+        "Name": { "Fn::Sub": "${AWS::StackName}-InstanceRoleName" }
+      },
+      "Value": { "Ref": "InstanceRole" }
     },
     "InstanceRoleProfile": {
       "Description": "Profile of the instance role",
+      "Export": {
+        "Name": { "Fn::Sub": "${AWS::StackName}-InstanceRoleProfile" }
+      },
       "Value": { "Ref": "InstanceProfile" }
     }
   },
@@ -88,9 +87,7 @@
               "Sid": "BackupsAccess"
             },
             {
-              "Action": [
-                "s3:GetObject"
-              ],
+              "Action": [ "s3:GetObject" ],
               "Effect": "Allow",
               "Resource": [
                 {
@@ -103,6 +100,18 @@
                       { "Ref": "ConfigBucketPath" }
                     ]
                   ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      { "Ref": "AWS::Partition" },
+                      ":s3:::",
+                      { "Ref": "ConfigBucketPath" },
+                      "/*"
+                    ]
+                  ]
                 }
               ],
               "Sid": "ConfigAccess"
@@ -113,9 +122,7 @@
                 "cloudformation:SignalResource"
               ],
               "Effect": "Allow",
-              "Resource": [
-                "*"
-              ],
+              "Resource": [ "*" ],
               "Sid": "ASGsupport"
             },
             {
@@ -191,18 +198,14 @@
           ],
           "Version": "2012-10-17"
         },
-        "Roles": [
-          { "Ref": "InstanceRole" }
-        ]
+        "Roles": [ { "Ref": "InstanceRole" } ]
       },
       "Type": "AWS::IAM::ManagedPolicy"
     },
     "InstanceProfile": {
       "Properties": {
         "Path": "/",
-        "Roles": [
-          { "Ref": "InstanceRole" }
-        ]
+        "Roles": [ { "Ref": "InstanceRole" } ]
       },
       "Type": "AWS::IAM::InstanceProfile"
     },
