@@ -170,6 +170,7 @@
           ]
         },
         "DBName": { "Ref": "DbInstanceName" },
+        "DBParameterGroupName": { "Ref": "RDSdbParmGrp" },
         "DBSubnetGroupName": { "Ref": "RDSdbSubnetGroup" },
         "Engine": "postgres",
         "EngineVersion": { "Ref": "PgsqlVersion" },
@@ -190,6 +191,43 @@
         "VPCSecurityGroups": { "Ref": "DbSecurityGroup" }
       },
       "Type": "AWS::RDS::DBInstance"
+    },
+    "RDSdbParmGrp": {
+      "Properties" : {
+        "Description" : "Parameters used to modify database behavior and performance characteristics",
+        "Family" : {
+          "Fn::Join": [
+            "",
+            [
+              "postgres",
+              {
+                "Fn::Select": [
+                  "0",
+                  {
+                    "Fn::Split": [
+                      ".",
+                      { "Ref": "PgsqlVersion" }
+                    ]
+                  }
+                ]
+              },
+              ".",
+              {
+                "Fn::Select": [
+                  "1",
+                  {
+                    "Fn::Split": [
+                      ".",
+                      { "Ref": "PgsqlVersion" }
+                    ]
+                  }
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      "Type" : "AWS::RDS::DBParameterGroup"
     },
     "RDSdbSubnetGroup": {
       "Properties": {
