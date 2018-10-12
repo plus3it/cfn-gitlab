@@ -1,11 +1,17 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
   "Conditions": {
-    "SetIops": { "Fn::Equals": [ { "Ref": "DbStorageType" }, "io1" ] },
+    "SetIops": {
+      "Fn::Equals": [ { "Ref": "DbStorageType" }, "io1" ]
+    },
     "SetNodeName": {
       "Fn::Not": [
-        { "Fn::Equals": [ { "Ref": "DbNodeName" }, "" ]
-        }
+        { "Fn::Equals": [ { "Ref": "DbNodeName" }, "" ] }
+      ]
+    },
+    "UseDbSnapshot": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "DbSnapshotId" }, "" ] }
       ]
     }
   },
@@ -13,6 +19,18 @@
   "Mappings": {},
   "Metadata": {},
   "Outputs": {
+    "RdsDbInstanceName": {
+      "Description": "RDS DB's instance-name.",
+      "Value": { "Ref": "DbInstanceName" }
+    },
+    "RdsDbUserName": {
+      "Description": "RDS DB's root user name.",
+      "Value": { "Ref": "DbAdminName" }
+    },
+    "RdsDbUserPass": {
+      "Description": "RDS DB's root user's password.",
+      "Value": { "Ref": "DbAdminPass" }
+    },
     "RdsEndpointAddress": {
       "Description": "RDS DB's endpoint FQDN.",
       "Value": {
@@ -21,18 +39,6 @@
           "Endpoint.Address"
         ]
       }
-    },
-    "RdsDbUserName": {
-      "Description": "RDS DB's root user name.",
-      "Value": { "Ref": "DbAdminName"}
-    },
-    "RdsDbUserPass": {
-      "Description": "RDS DB's root user's password.",
-      "Value": { "Ref": "DbAdminPass"}
-    },
-    "RdsDbInstanceName": {
-      "Description": "RDS DB's instance-name.",
-      "Value": { "Ref": "DbInstanceName"}
     }
   },
   "Parameters": {
@@ -101,7 +107,20 @@
       "Description": "List of security groups to apply to the RDS database.",
       "Type": "List<AWS::EC2::SecurityGroup::Id>"
     },
-    "DbStorageType" : {
+    "DbSnapshotId": {
+      "AllowedPattern": "^$|^arn:.*$",
+      "Default": "",
+      "Description": "(Optional) RDS snapshot-ARN to clone new database from.",
+      "Type": "String"
+    },
+    "DbStorageIops": {
+      "Default": "1000",
+      "Description": "Provisioned-IOPS of storage to used to host DB-data.",
+      "MaxValue": "30000",
+      "MinValue": "1000",
+      "Type": "Number"
+    },
+    "DbStorageType": {
       "AllowedValues": [
         "standard",
         "gp2",
@@ -110,13 +129,6 @@
       "Default": "gp2",
       "Description": "Type of storage used to host DB-data.",
       "Type": "String"
-    },
-    "DbStorageIops" : {
-      "Default": "1000",
-      "Description": "Provisioned-IOPS of storage to used to host DB-data.",
-      "MaxValue": "30000",
-      "MinValue": "1000",
-      "Type": "Number"
     },
     "DbSubnets": {
       "Description": "Select at least two subnets, each in different Availability Zones",
@@ -156,9 +168,7 @@
     "RDSdb": {
       "Metadata": {},
       "Properties": {
-        "AllocatedStorage": {
-          "Ref": "DbDataSize"
-        },
+        "AllocatedStorage": { "Ref": "DbDataSize" },
         "AllowMajorVersionUpgrade": "true",
         "AutoMinorVersionUpgrade": "true",
         "BackupRetentionPeriod": "7",
@@ -170,18 +180,24 @@
             { "Ref": "AWS::NoValue" }
           ]
         },
-        "DBName": { "Ref": "DbInstanceName" },
+        "DBName": {
+          "Fn::If": [
+            "UseDbSnapshot",
+            { "Ref": "AWS::NoValue" },
+            { "Ref": "DbInstanceName" }
+          ]
+        },
         "DBParameterGroupName": { "Ref": "RDSdbParmGrp" },
+        "DBSnapshotIdentifier": {
+          "Fn::If": [
+            "UseDbSnapshot",
+            { "Ref": "DbSnapshotId" },
+            { "Ref": "AWS::NoValue" }
+          ]
+        },
         "DBSubnetGroupName": { "Ref": "RDSdbSubnetGroup" },
         "Engine": "postgres",
         "EngineVersion": { "Ref": "PgsqlVersion" },
-        "MasterUserPassword": { "Ref": "DbAdminPass" },
-        "MasterUsername": { "Ref": "DbAdminName" },
-        "MultiAZ": { "Ref": "DbIsMultiAz" },
-        "PreferredBackupWindow": "23:30-00:00",
-        "PreferredMaintenanceWindow": "sun:00:30-sun:01:00",
-        "PubliclyAccessible": "false",
-        "StorageType": { "Ref": "DbStorageType" },
         "Iops": {
           "Fn::If": [
             "SetIops",
@@ -189,14 +205,27 @@
             { "Ref": "AWS::NoValue" }
           ]
         },
+        "MasterUserPassword": {
+          "Fn::If": [
+            "UseDbSnapshot",
+            { "Ref": "AWS::NoValue" },
+            { "Ref": "DbAdminPass" }
+          ]
+        },
+        "MasterUsername": { "Ref": "DbAdminName" },
+        "MultiAZ": { "Ref": "DbIsMultiAz" },
+        "PreferredBackupWindow": "23:30-00:00",
+        "PreferredMaintenanceWindow": "sun:00:30-sun:01:00",
+        "PubliclyAccessible": "false",
+        "StorageType": { "Ref": "DbStorageType" },
         "VPCSecurityGroups": { "Ref": "DbSecurityGroup" }
       },
       "Type": "AWS::RDS::DBInstance"
     },
     "RDSdbParmGrp": {
-      "Properties" : {
-        "Description" : "Parameters used to modify database behavior and performance characteristics",
-        "Family" : {
+      "Properties": {
+        "Description": "Parameters used to modify database behavior and performance characteristics",
+        "Family": {
           "Fn::Join": [
             "",
             [
@@ -228,14 +257,12 @@
           ]
         }
       },
-      "Type" : "AWS::RDS::DBParameterGroup"
+      "Type": "AWS::RDS::DBParameterGroup"
     },
     "RDSdbSubnetGroup": {
       "Properties": {
         "DBSubnetGroupDescription": "Subnets available for the RDS DB Instance",
-        "SubnetIds": {
-          "Ref": "DbSubnets"
-        }
+        "SubnetIds": { "Ref": "DbSubnets" }
       },
       "Type": "AWS::RDS::DBSubnetGroup"
     }
