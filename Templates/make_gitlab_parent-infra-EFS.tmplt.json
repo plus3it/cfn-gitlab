@@ -312,7 +312,7 @@
           }
         },
         "TemplateURL": { "Ref": "GitlabEfsTemplate" },
-        "TimeoutInMinutes": "10"
+        "TimeoutInMinutes": "15"
       },
       "Type": "AWS::CloudFormation::Stack"
     },
@@ -334,18 +334,13 @@
             "Fn::Join": [
               ",",
               [
-                {
-                  "Fn::GetAtt": [
-                    "SgRes",
-                    "Outputs.AppSg"
-                  ]
-                }
+                { "Fn::GetAtt": [ "SgRes", "Outputs.AppSg" ] }
               ]
             ]
           }
         },
         "TemplateURL": { "Ref": "GitlabElbTemplate" },
-        "TimeoutInMinutes": "10"
+        "TimeoutInMinutes": "15"
       },
       "Type": "AWS::CloudFormation::Stack"
     },
@@ -353,11 +348,11 @@
       "Properties": {
         "Parameters": {
           "ConfigBucketPath": { "Ref": "ConfigBucketPath" },
-          "GitlabBucketName": { "Ref": "GitlabBucket" },
+          "GitlabBucketName": { "Fn::GetAtt": [ "S3Res", "Outputs.BucketName" ] },
           "RolePrefix": { "Ref": "RolePrefix" }
         },
         "TemplateURL": { "Ref": "GitlabIamTemplate" },
-        "TimeoutInMinutes": "10"
+        "TimeoutInMinutes": "15"
       },
       "Type": "AWS::CloudFormation::Stack"
     },
@@ -371,12 +366,7 @@
           "DbInstanceType": { "Ref": "DbInstanceType" },
           "DbIsMultiAz": "true",
           "DbNodeName": { "Ref": "DbNodeName" },
-          "DbSecurityGroup": {
-            "Fn::GetAtt": [
-              "SgRes",
-              "Outputs.RdsSg"
-            ]
-          },
+          "DbSecurityGroup": { "Fn::GetAtt": [ "SgRes", "Outputs.RdsSg" ] },
           "DbSubnets": {
             "Fn::Join": [
               ",",
@@ -386,7 +376,8 @@
           "PgsqlVersion": { "Ref": "PgsqlVersion" },
           "TargetVPC": { "Ref": "TargetVPC" }
         },
-        "TemplateURL": { "Ref": "GitlabRdsTemplate" }
+        "TemplateURL": { "Ref": "GitlabRdsTemplate" },
+        "TimeoutInMinutes": "120"
       },
       "Type": "AWS::CloudFormation::Stack"
     },
@@ -402,7 +393,7 @@
           "TierToGlacierDays": { "Ref": "TierToGlacierDays" }
         },
         "TemplateURL": { "Ref": "GitlabBucketTemplate" },
-        "TimeoutInMinutes": "10"
+        "TimeoutInMinutes": "15"
       },
       "Type": "AWS::CloudFormation::Stack"
     },
