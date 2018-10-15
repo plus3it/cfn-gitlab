@@ -72,18 +72,6 @@
         { "Fn::Equals": [ { "Ref": "NoReboot" }, "true" ] }
       ]
     },
-    "SupportsNvme": {
-      "Fn::Equals": [
-        {
-          "Fn::FindInMap": [
-            "InstanceTypeMap",
-            { "Ref": "InstanceType" },
-            "SupportsNvme"
-          ]
-        },
-        "true"
-      ]
-    },
     "UseAdminGroups": {
       "Fn::Not": [
         { "Fn::Equals": [ { "Ref": "WatchmakerAdminGroups" }, "" ] }
@@ -441,7 +429,7 @@
       "Description": "FQDN of public-facing reverse-proxy.",
       "Type": "String",
       "AllowedPattern": "^[a-z][a-z0-9.-]*[a-z]$",
-      "ConstraintDescription": "Alphanumeric string DNS FQDN representing the RDS end-point name."
+      "ConstraintDescription": "DNS FQDN of the user-facing proxy server"
     },
     "PypiIndexUrl": {
       "AllowedPattern": "^http[s]?://.*$",
@@ -471,6 +459,14 @@
       "Description": "RDS database-user login password.",
       "NoEcho": "True",
       "Type": "String"
+    },
+    "RootVolumeSize": {
+      "ConstraintDescription": "Must be between 20GB and 16384GB.",
+      "Default": "20",
+      "Description": "Size in GB of the EBS volume to create. If smaller than AMI default, create operation will fail; If larger, root device-volume's partition size will be increased",
+      "MaxValue": "16384",
+      "MinValue": "20",
+      "Type": "Number"
     },
     "SecurityGroupIds": {
       "Description": "List of security groups to apply to the instance",
@@ -1408,6 +1404,7 @@
             "DeviceName": "/dev/sda1",
             "Ebs": {
               "DeleteOnTermination": true,
+              "VolumeSize": { "Ref": "RootVolumeSize" },
               "VolumeType": "gp2"
             }
           },
