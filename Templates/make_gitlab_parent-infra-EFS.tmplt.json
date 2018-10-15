@@ -41,7 +41,6 @@
             "GitLabPrepScript",
             "GitLabConfScript",
             "GitlabBucket",
-            "BackupFolder",
             "GitRepoShareFsPath",
             "GitRepoShareType"
           ]
@@ -74,52 +73,21 @@
   "Outputs": {
     "GitLabBucketName": {
       "Description": "The GitLab EC2 instance's bucket-name.",
-      "Export": {
-        "Name": {
-          "Fn::Sub": "${AWS::StackName}-BucketName"
-        }
-      },
-      "Value": {
-        "Fn::GetAtt": [
-          "S3Res",
-          "Outputs.GitlabBucketName"
-        ]
-      }
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-BucketName" } },
+      "Value": { "Fn::GetAtt": [ "S3Res", "Outputs.BucketName" ] }
     },
     "GitLabElbFqdn": {
       "Description": "GitLab front-end's IP address",
-      "Export": {
-        "Name": {
-          "Fn::Sub": "${AWS::StackName}-ElbDnsName"
-        }
-      },
-      "Value": {
-        "Fn::GetAtt": [
-          "ElbRes",
-          "Outputs.GitLabElbFqdn"
-        ]
-      }
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-ElbDnsName" } },
+      "Value": { "Fn::GetAtt": [ "ElbRes", "Outputs.GitLabElbFqdn" ] }
     },
     "RdsFqdn": {
       "Description": "FQDN of Stack's RDS instance.",
-      "Export": {
-        "Name": {
-          "Fn::Sub": "${AWS::StackName}-RdsFqdn"
-        }
-      },
-      "Value": {
-        "Fn::GetAtt": [
-          "RdsRes",
-          "Outputs.RdsEndpointAddress"
-        ]
-      }
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-RdsFqdn" } },
+      "Value": { "Fn::GetAtt": [ "RdsRes", "Outputs.RdsEndpointAddress" ] }
     }
   },
   "Parameters": {
-    "BackupFolder": {
-      "Description": "Folder in S3 Bucket to host backups of GitLab config-data",
-      "Type": "String"
-    },
     "BucketInventoryTracking": {
       "AllowedValues": [
         "true",
@@ -222,6 +190,7 @@
         "glusterfs",
         "nfs"
       ],
+      "Default": "nfs",
       "Description": "Type of network share hosting persisted git repository content.",
       "Type": "String"
     },
