@@ -39,32 +39,37 @@
   "Outputs": {
     "GitLabElbFqdn": {
       "Description": "GitLab front-end's IP address",
-      "Export": { "Name" : { "Fn::Sub": "${AWS::StackName}-ElbDnsName" } },
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-ElbDnsName" } },
       "Value": { "Fn::GetAtt": [ "GitLabPubElb", "DNSName" ] }
     },
     "GitLabElbId": {
       "Description": "GitLab front-end's service address",
-      "Export": { "Name" : { "Fn::Sub": "${AWS::StackName}-ElbId" } },
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-ElbId" } },
       "Value": { "Ref": "GitLabPubElb" }
     },
     "GitLabElbRawUrl": {
       "Description": "GitLab front-end's unaliased URL",
-      "Export": { "Name" : { "Fn::Sub": "${AWS::StackName}-ElbRawUrl" } },
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-ElbRawUrl" } },
       "Value": {
         "Fn::Join": [
           "",
           [
             "https://",
-            { "Fn::GetAtt": [ "GitLabPubElb", "DNSName" ] }
+            {
+              "Fn::GetAtt": [
+                "GitLabPubElb",
+                "DNSName"
+              ]
+            }
           ]
         ]
       }
     }
   },
   "Parameters": {
-    "GitLabListenerCert": {
+    "GitLabInstanceId": {
       "Default": "",
-      "Description": "Name/ID of the ACM-managed SSL Certificate to protect public listener.",
+      "Description": "(Optional) ID of the EC2-instance this template should create a proxy for.",
       "Type": "String"
     },
     "GitLabListenPort": {
@@ -74,11 +79,10 @@
       "MinValue": "1",
       "Type": "Number"
     },
-    "GitLabServicePort": {
-      "Default": "80",
-      "Description": "TCP Port number that the GitLab host listens to.",
-      "MaxValue": "65535",
-      "Type": "Number"
+    "GitLabListenerCert": {
+      "Default": "",
+      "Description": "Name/ID of the ACM-managed SSL Certificate to protect public listener.",
+      "Type": "String"
     },
     "GitLabPassesSsh": {
       "AllowedValues": [
@@ -89,13 +93,15 @@
       "Description": "Whether to allow SSH passthrough to GitLab master.",
       "Type": "String"
     },
+    "GitLabServicePort": {
+      "Default": "80",
+      "Description": "TCP Port number that the GitLab host listens to.",
+      "MaxValue": "65535",
+      "Type": "Number"
+    },
     "HaSubnets": {
       "Description": "Select three subnets - each from different Availability Zones.",
       "Type": "List<AWS::EC2::Subnet::Id>"
-    },
-    "GitLabInstanceId": {
-      "Description": "(Optional) ID of the EC2-instance this template should create a proxy for.",
-      "Type": "String"
     },
     "ProxyPrettyName": {
       "Description": "(Optional) A short, human-friendly label to assign to the ELB (no capital letters).",
@@ -159,9 +165,10 @@
                 ":",
                 [
                   "arn:aws:acm",
-                  { "Ref" : "AWS::Region" },
-                  { "Ref" : "AWS::AccountId" },
-                  { "Fn::Join": [
+                  { "Ref": "AWS::Region" },
+                  { "Ref": "AWS::AccountId" },
+                  {
+                    "Fn::Join": [
                       "",
                       [
                         "certificate/",
