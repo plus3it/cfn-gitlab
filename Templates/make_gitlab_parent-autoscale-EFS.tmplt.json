@@ -194,6 +194,10 @@
       "Description": "Type of EBS volume to create. Ignored if \"BackupVolumeDevice\" is blank",
       "Type": "String"
     },
+    "CloudwatchBucketName": {
+      "Description": "Name of the S3 Bucket hosting the CloudWatch agent archive files",
+      "Type": "String"
+    },
     "ConfigBucketPath": {
       "Default": "",
       "Description": "S3 bucket-path to GitLab configuration template-file.",
@@ -672,6 +676,7 @@
     "IamRes": {
       "Properties": {
         "Parameters": {
+          "CloudwatchBucketName": { "Ref": "CloudwatchBucketName" },
           "ConfigBucketPath": { "Ref": "ConfigBucketPath" },
           "GitlabBucketArn": {
             "Fn::GetAtt": [ "S3Res", "Outputs.GitlabBucketArn" ]
