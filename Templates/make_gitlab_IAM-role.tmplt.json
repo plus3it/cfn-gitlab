@@ -5,6 +5,11 @@
       "Fn::Not": [
         { "Fn::Equals": [ { "Ref": "RolePrefix" }, "" ] }
       ]
+    },
+    "SetupForCloudwatch": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "CloudwatchBucketName"}, "" ] }
+      ]
     }
   },
   "Description": "This template sets up the IAM role needed by a GitLab instance",
@@ -32,6 +37,10 @@
     }
   },
   "Parameters": {
+    "CloudwatchBucketName": {
+      "Description": "Name of the S3 Bucket hosting the CloudWatch agent archive files",
+      "Type": "String"
+    },
     "ConfigBucketPath": {
       "Default": "",
       "Description": "S3 bucket-path to GitLab configuration template-file.",
@@ -81,6 +90,21 @@
                       { "Ref": "GitlabBucketName" },
                       "/*"
                     ]
+                  ]
+                },
+                {
+                  "Fn::If": [
+                    "SetupForCloudwatch",
+                    { "Fn::Join": [ "",
+                        [
+                          "arn:",
+                          { "Ref": "AWS::Partition" },
+                          ":s3:::",
+                          { "Ref": "CloudwatchBucketName" },
+                          "/*"
+                        ]
+                    ]},
+                    { "Ref": "AWS::NoValue" }
                   ]
                 }
               ],
