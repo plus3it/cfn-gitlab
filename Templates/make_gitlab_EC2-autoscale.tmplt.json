@@ -1872,6 +1872,8 @@
       "Properties": {
         "AutoScalingGroupName": { "Ref": "GitLabASG" },
         "DesiredCapacity": { "Ref": "MinCapacity" },
+        "MaxSize": { "Ref": "MinCapacity" },
+        "MinSize": { "Ref": "MinCapacity" },
         "Recurrence": { "Ref": "ScaleDownSchedule" }
       },
       "Type": "AWS::AutoScaling::ScheduledAction"
@@ -1881,6 +1883,8 @@
       "Properties": {
         "AutoScalingGroupName": { "Ref": "GitLabASG" },
         "DesiredCapacity": { "Ref": "DesiredCapacity" },
+        "MaxSize": { "Ref": "MaxCapacity" },
+        "MinSize": { "Ref": "MinCapacity" },
         "Recurrence": { "Ref": "ScaleUpSchedule" }
       },
       "Type": "AWS::AutoScaling::ScheduledAction"
