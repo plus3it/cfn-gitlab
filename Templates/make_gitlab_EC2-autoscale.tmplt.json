@@ -1880,7 +1880,7 @@
       "Condition": "UseScheduledAction",
       "Properties": {
         "AutoScalingGroupName": { "Ref": "GitLabASG" },
-        "DesiredCapacity": { "Ref": "MaxCapacity" },
+        "DesiredCapacity": { "Ref": "DesiredCapacity" },
         "Recurrence": { "Ref": "ScaleUpSchedule" }
       },
       "Type": "AWS::AutoScaling::ScheduledAction"
