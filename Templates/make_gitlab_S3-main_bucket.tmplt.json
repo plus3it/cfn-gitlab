@@ -1,46 +1,157 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
   "Conditions": {
-    "SetBucketName": {
-      "Fn::Not": [ {
-        "Fn::Equals": [
-          { "Ref": "GitlabBucket" },
-          ""
-        ]
-      } ]
+    "SetBackupBucketName": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "BucketName" }, "" ] }
+      ]
+    },
+    "UseBackupBucketInventoryTracking": {
+      "Fn::Equals": [ { "Ref": "BucketInventoryTracking" }, "true" ]
+    },
+    "UseBackupReportingLocation": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "ReportingBucket" }, "" ] }
+      ]
     }
   },
-  "Description": "This template sets up the S3 Bucket used by a GitLab instance.",
+  "Description": "This template sets up the Buckets used by GitLab for S3-based storage",
+  "Outputs": {
+    "BucketArn": {
+      "Description": "GitLab S3 bucket ARN.",
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-BackupBucketArn" } },
+      "Value": { "Fn::GetAtt": [ "GitlabS3Bucket", "Arn" ] }
+    },
+    "BucketName": {
+      "Description": "GitLab S3 backup bucket name.",
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-BackupBucket" } },
+      "Value": { "Ref": "GitlabS3Bucket" }
+    }
+  },
   "Parameters": {
-    "GitlabBucket": {
-      "Description": "S3 Bucket to host GitLab content.",
-      "Type": "String",
-      "AllowedPattern": "^[a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9]*$|^$"
+    "BucketInventoryTracking": {
+      "AllowedValues": [
+        "true",
+        "false"
+      ],
+      "Default": "false",
+      "Description": "(Optional) Whether to enable generic bucket inventory-tracking. Requires setting of the 'BackupReportingBucket' parameter.",
+      "Type": "String"
+    },
+    "BucketName": {
+      "AllowedPattern": "^[a-z][a-z0-9-]*[a-z0-9]*$|^$",
+      "Description": "(Optional) Name to set for S3 Bucket used for longer-term retention of backups. Will be randomly named if left un-set.",
+      "Type": "String"
+    },
+    "FinalExpirationDays": {
+      "ConstraintDescription": "Must be an integer value greater than '0'.",
+      "Default": "30",
+      "Description": "Number of days to retain objects before aging them out of the bucket",
+      "Type": "Number"
+    },
+    "Folder": {
+      "AllowedPattern": "^[a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9]*$|^$",
+      "Description": "S3 bucket-folder to host backups of GitLab config- and app-data",
+      "Type": "String"
+    },
+    "ReportingBucket": {
+      "AllowedPattern": "^arn:.*$|^$",
+      "ConstraintDescription": "String must start with 'arn:' (or be left wholly blank).",
+      "Default": "",
+      "Description": "(Optional) Destination for storing analytics data. Must be provided in ARN format.",
+      "Type": "String"
+    },
+    "RetainIncompleteDays": {
+      "ConstraintDescription": "Must be an integer value between '0' and '30'",
+      "Default": "3",
+      "Description": "Number of days to retain objects that were not completely uploaded.",
+      "MaxValue": "30",
+      "MinValue": "0",
+      "Type": "Number"
+    },
+    "TierToGlacierDays": {
+      "ConstraintDescription": "Must be an integer value between '1' and '30'",
+      "Default": "5",
+      "Description": "Number of days to retain objects in standard storage tier.",
+      "MaxValue": "30",
+      "MinValue": "1",
+      "Type": "Number"
     }
   },
   "Resources": {
     "GitlabS3Bucket": {
-      "Type": "AWS::S3::Bucket",
       "Properties": {
         "AccessControl": "BucketOwnerFullControl",
+        "AnalyticsConfigurations": [
+          {
+            "Id": "Archivable",
+            "Prefix": "Backups/",
+            "StorageClassAnalysis": {
+              "DataExport": {
+                "Fn::If": [
+                  "UseBackupReportingLocation",
+                  {
+                    "Destination": {
+                      "BucketArn": { "Ref": "ReportingBucket" },
+                      "Format": "CSV",
+                      "Prefix": "StorageReporting/Analytics"
+                    },
+                    "OutputSchemaVersion": "V_1"
+                  },
+                  { "Ref": "AWS::NoValue" }
+                ]
+              }
+            }
+          }
+        ],
         "BucketName": {
           "Fn::If": [
-            "SetBucketName",
-            { "Ref" : "GitlabBucket" },
-            { "Ref" : "AWS::NoValue" }
+            "SetBackupBucketName",
+            { "Ref": "BucketName" },
+            { "Ref": "AWS::NoValue" }
+          ]
+        },
+        "InventoryConfigurations": [
+          {
+            "Fn::If": [
+              "UseBackupBucketInventoryTracking",
+              {
+                "Destination": {
+                  "BucketArn": { "Ref": "ReportingBucket" },
+                  "Format": "CSV",
+                  "Prefix": "StorageReporting/Inventory"
+                },
+                "Enabled": "true",
+                "Id": "Inventory",
+                "IncludedObjectVersions": "Current",
+                "Prefix": "Backups/",
+                "ScheduleFrequency": "Weekly"
+              },
+              { "Ref": "AWS::NoValue" }
+            ]
+          }
+        ],
+        "LifecycleConfiguration": {
+          "Rules": [
+            {
+              "AbortIncompleteMultipartUpload": {
+                "DaysAfterInitiation": { "Ref": "RetainIncompleteDays" }
+              },
+              "ExpirationInDays": { "Ref": "FinalExpirationDays" },
+              "Id": "Tiering",
+              "Prefix": "Backups/",
+              "Status": "Enabled",
+              "Transitions": [
+                {
+                  "StorageClass": "GLACIER",
+                  "TransitionInDays": { "Ref": "TierToGlacierDays" }
+                }
+              ]
+            }
           ]
         }
-      }
-    }
-  },
-  "Outputs": {
-    "GitlabBucketName": {
-      "Value": { "Ref": "GitlabS3Bucket" },
-      "Description": "Gitlab S3 Bucket Name."
-    },
-    "GitlabBucketArn": {
-      "Value": { "Fn::GetAtt": [ "GitlabS3Bucket", "Arn" ] },
-      "Description": "Gitlab S3 Bucket ARN."
+      },
+      "Type": "AWS::S3::Bucket"
     }
   }
 }

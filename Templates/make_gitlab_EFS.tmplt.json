@@ -11,7 +11,7 @@
             { "Ref": "GitLabEFS" },
             "efs",
             { "Ref": "AWS::Region" },
-            { "Ref": "ServiceTld" }
+            { "Ref": "AWS::URLSuffix" }
           ]
         ]
       }
@@ -41,11 +41,6 @@
     "EfsSubnet": {
       "Type": "List<AWS::EC2::Subnet::Id>",
       "Description": "Select three subnets - each from different Availability Zones."
-    },
-    "ServiceTld": {
-      "Default": "amazonaws.com",
-      "Description": "TLD of the created EFS-endpoint.",
-      "Type": "String"
     }
   },
   "Resources": {
