@@ -1590,6 +1590,7 @@
                 "      echo \"Attempting use free space in VG to expand ${ROOTVOL}\"\n",
                 "      lvextend -r -l +100%FREE \"${ROOTVOL}\"\n",
                 "   elif [[ ${VGSFREE} -gt 2 ]]\n",
+                "   then\n",
                 "      echo \"Attempting to expand ${ROOTVOL} by 2GiB\"\n",
                 "      lvextend -r -L +2G \"${ROOTVOL}\"\n",
                 "   else\n",
