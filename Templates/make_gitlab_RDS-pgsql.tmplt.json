@@ -13,6 +13,22 @@
       "Fn::Not": [
         { "Fn::Equals": [ { "Ref": "DbSnapshotId" }, "" ] }
       ]
+    },
+    "UsePgSqlMinor": {
+      "Fn::Equals": [
+        {
+          "Fn::Select": [
+            "0",
+            {
+              "Fn::Split": [
+                ".",
+                { "Ref": "PgsqlVersion" }
+              ]
+            }
+          ]
+        },
+        "9"
+      ]
     }
   },
   "Description": "This template deploys a PGSQL database to host GitLab configuration data.",
@@ -281,16 +297,29 @@
                   }
                 ]
               },
-              ".",
               {
-                "Fn::Select": [
-                  "1",
+                "Fn::If": [
+                  "UsePgSqlMinor",
                   {
-                    "Fn::Split": [
-                      ".",
-                      { "Ref": "PgsqlVersion" }
+                    "Fn::Join": [
+                      "",
+                      [
+                        ".",
+                        {
+                          "Fn::Select": [
+                            "1",
+                            {
+                              "Fn::Split": [
+                                ".",
+                                { "Ref": "PgsqlVersion" }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
                     ]
-                  }
+                  },
+                  { "Ref": "AWS::NoValue" }
                 ]
               }
             ]
