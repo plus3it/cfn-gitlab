@@ -40,7 +40,7 @@ function err_exit {
 }
 
 function NoIpv6localhost {
-   if [ $( grep -q localhost6 /etc/hosts )$? -eq 0 ]
+   if [[ $( grep -q localhost6 /etc/hosts )$? -eq 0 ]]
    then
       sed -i '/localhost6/s/^/## /' /etc/hosts
    fi

@@ -309,12 +309,12 @@
       "Type": "String"
     },
     "GitLabConfScript": {
-      "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$",
+      "AllowedPattern": "^$|^http[s]://.*\\.sh$",
       "Description": "URL of the script that localizes GitLab for running in the target environment",
       "Type": "String"
     },
     "GitLabPrepScript": {
-      "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$",
+      "AllowedPattern": "^$|^http[s]://.*\\.sh$",
       "Description": "URL of the script that preps the OS to host GitLab",
       "Type": "String"
     },
