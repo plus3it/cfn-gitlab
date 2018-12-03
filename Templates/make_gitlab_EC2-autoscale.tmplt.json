@@ -796,6 +796,7 @@
               },
               "watchmaker-install",
               "watchmaker-launch",
+              "watchmaker-defips",
               {
                 "Fn::If": [
                   "UseCfnAppInstaller",
@@ -829,6 +830,7 @@
               },
               "watchmaker-install",
               "watchmaker-update",
+              "watchmaker-defips",
               {
                 "Fn::If": [
                   "UseCfnAppInstaller",
@@ -1309,6 +1311,13 @@
                     "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
                   ]
                 }
+              }
+            }
+          },
+          "watchmaker-defips": {
+            "commands": {
+              "20-watchmaker-defips": {
+                "command": "/bin/salt-call --local ash.fips_disable"
               }
             }
           },
