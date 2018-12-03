@@ -857,7 +857,119 @@
                       "\",\n",
                       "  \"log_stream_name\": \"salt_call_debug_logs_{instance_id}\",\n",
                       "  \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
-                      "  }\n",
+                      "  },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/nginx/error.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabMasterLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"nginx_err_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/nginx/access.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabMasterLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"nginx_access_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/nginx/gitlab_error.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabMasterLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"nginx_gitlab_err_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/nginx/gitlab_access.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabMasterLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"nginx_gitlab_access_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/gitlab-rails/grpc.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabMasterLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"gitlab_grpc_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/gitlab-rails/production.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabMasterLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"gitlab_production_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/gitlab-rails/application.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabMasterLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"gitlab_application_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/gitlab-rails/sidekiq.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabMasterLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"gitlab_sidekiq_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      }\n",
                       "  ]\n",
                       "  }\n",
                       "  },\n",
