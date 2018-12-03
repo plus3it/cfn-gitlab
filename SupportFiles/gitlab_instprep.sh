@@ -39,6 +39,13 @@ function err_exit {
    exit 1
 }
 
+function NoIpv6localhost {
+   if [[ $( grep -q localhost6 /etc/hosts )$? -eq 0 ]]
+   then
+      sed -i '/localhost6/s/^/## /' /etc/hosts
+   fi
+}
+
 # Open firewall ports
 function FwStuff {
    # Temp-disable SELinux (need when used in cloud-init context)
@@ -119,6 +126,11 @@ function InstGitlab {
 ###############
 ## Main Program
 ###############
+
+# Make sure no 'localhost6' entry active in /etc/hosts
+NoIpv6localhost
+
+# Add RPMs based on share-server type
 if [[ ${SHARETYPE} = nfs ]]
 then
    DEPRPMS+=(
@@ -197,15 +209,23 @@ then
    echo "Successfully nstalled Software CoLlections repodefs"
 fi
 
+# Which ruby to install
+case $( repoquery ${GITLAB_RPM_NAME} --qf '%{version}\n' | cut -d '.' -f 1 ) in
+   10) RUBYVERS=rh-ruby23
+       ;;
+   11) RUBYVERS=rh-ruby24
+       ;;
+esac
+
 # Install a Ruby version that is FIPS compatible
-yum --enablerepo=*scl* install -y rh-ruby23 || \
+yum --enablerepo=*scl* install -y ${RUBYVERS} || \
    err_exit "Install of updated Ruby RPM failed."
 echo "Installed updated Ruby RPM"
 
 # Permanently eable the SCL version of Ruby
 cat << EOF > /etc/profile.d/scl-ruby.sh
-source /opt/rh/rh-ruby23/enable
-export X_SCLS="\$(scl enable rh-ruby23 'echo \$X_SCLS')"
+source /opt/rh/${RUBYVERS}/enable
+export X_SCLS="\$(scl enable ${RUBYVERS} 'echo \$X_SCLS')"
 EOF
 
 # Create GitLab backup script

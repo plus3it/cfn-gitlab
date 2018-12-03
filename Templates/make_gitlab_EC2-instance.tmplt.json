@@ -309,12 +309,12 @@
       "Type": "String"
     },
     "GitLabConfScript": {
-      "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$",
+      "AllowedPattern": "^$|^http[s]://.*\\.sh$",
       "Description": "URL of the script that localizes GitLab for running in the target environment",
       "Type": "String"
     },
     "GitLabPrepScript": {
-      "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$",
+      "AllowedPattern": "^$|^http[s]://.*\\.sh$",
       "Description": "URL of the script that preps the OS to host GitLab",
       "Type": "String"
     },
@@ -663,6 +663,7 @@
               },
               "watchmaker-install",
               "watchmaker-launch",
+              "watchmaker-defips",
               {
                 "Fn::If": [
                   "UseOsPrepScript",
@@ -707,6 +708,7 @@
               },
               "watchmaker-install",
               "watchmaker-update",
+              "watchmaker-defips",
               {
                 "Fn::If": [
                   "UseOsPrepScript",
@@ -855,7 +857,119 @@
                       "\",\n",
                       "  \"log_stream_name\": \"salt_call_debug_logs_{instance_id}\",\n",
                       "  \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
-                      "  }\n",
+                      "  },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/nginx/error.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabMasterLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"nginx_err_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/nginx/access.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabMasterLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"nginx_access_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/nginx/gitlab_error.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabMasterLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"nginx_gitlab_err_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/nginx/gitlab_access.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabMasterLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"nginx_gitlab_access_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/gitlab-rails/grpc.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabMasterLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"gitlab_grpc_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/gitlab-rails/production.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabMasterLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"gitlab_production_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/gitlab-rails/application.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabMasterLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"gitlab_application_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/gitlab-rails/sidekiq.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabMasterLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"gitlab_sidekiq_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      }\n",
                       "  ]\n",
                       "  }\n",
                       "  },\n",
@@ -1160,6 +1274,13 @@
                     "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
                   ]
                 }
+              }
+            }
+          },
+          "watchmaker-defips": {
+            "commands": {
+              "20-watchmaker-defips": {
+                "command": "/bin/salt-call --local ash.fips_disable"
               }
             }
           },
@@ -1590,6 +1711,7 @@
                 "      echo \"Attempting use free space in VG to expand ${ROOTVOL}\"\n",
                 "      lvextend -r -l +100%FREE \"${ROOTVOL}\"\n",
                 "   elif [[ ${VGSFREE} -gt 2 ]]\n",
+                "   then\n",
                 "      echo \"Attempting to expand ${ROOTVOL} by 2GiB\"\n",
                 "      lvextend -r -L +2G \"${ROOTVOL}\"\n",
                 "   else\n",

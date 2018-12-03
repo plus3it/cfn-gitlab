@@ -82,6 +82,12 @@ then
    err_exit "Required env var(s) not defined. Aborting!"
 fi
 
+# Dear SEL: relax for a minute!
+setenforce 0 || \
+   err_exit "Failed to temp-disable SELinux"
+echo "Temp-disabled SELinux"
+
+
 
 #
 # Preserve the existing gitlab.rb file
@@ -217,3 +223,9 @@ echo "Restart successful."
 #####
 echo "yes" | gitlab-rake gitlab:shell:setup && echo "Success!" || \
   echo 'Failure during restoration of git-users'\'' SSH pubkeys (new install?)'
+
+# Dear SEL: go back to being a PitA
+setenforce 1 || \
+   err_exit "Failed to reactivate SELinux"
+echo "Re-enabled SELinux"
+

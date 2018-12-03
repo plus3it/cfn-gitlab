@@ -41,7 +41,8 @@ pipeline {
         string(name: 'DbNodeName', description: 'NodeName to assign to the GitLab RDS instance')
         string(name: 'DbInstanceName', description: 'Instance-name of the GitLab database')
         string(name: 'DbAdminName', description: 'Name of the GitLab master database-user')
-        string(name: 'DbAdminPass', description: 'Password of the GitLab master database-user')
+        password(name: 'DbAdminPass', description: 'Password of the GitLab master database-user')
+        string(name: 'CloudwatchBucketName', description: 'S3 bucket from which to fetch CloudWatch log-agent')
         string(name: 'GitlabBucket', description: 'S3 Bucket used by GitLab EC2 host to store files for long-term retention')
         string(name: 'Folder', defaultValue: 'Backups', description: 'Folder in S3 Bucket to host backups of GitLab config-data')
         string(name: 'TierToGlacierDays', defaultValue: '7', description: 'Number of days to retain objects in standard storage tier')
@@ -72,6 +73,10 @@ pipeline {
                             {
                                 "ParameterKey": "BucketInventoryTracking",
                                 "ParameterValue": "${env.BucketInventoryTracking}"
+                            },
+                            {
+                                "ParameterKey": "CloudwatchBucketName",
+                                "ParameterValue": "${env.CloudwatchBucketName}"
                             },
                             {
                                 "ParameterKey": "ConfigBucketPath",
@@ -275,6 +280,11 @@ pipeline {
                     '''
                 }
             }
+        }
+    }
+    post {
+        cleanup {
+           step([$class: 'WsCleanup'])
         }
     }
 }
