@@ -353,6 +353,7 @@
         "Parameters": {
           "CloudwatchBucketName": { "Ref": "CloudwatchBucketName" },
           "ConfigBucketPath": { "Ref": "ConfigBucketPath" },
+          "ElbName": { "Fn::GetAtt": [ "ElbRes", "Outputs.GitLabElbId" ] },
           "GitlabBucketName": { "Fn::GetAtt": [ "S3Res", "Outputs.BucketName" ] },
           "RolePrefix": { "Ref": "RolePrefix" }
         },
