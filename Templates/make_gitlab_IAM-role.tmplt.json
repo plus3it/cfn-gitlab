@@ -8,7 +8,12 @@
     },
     "SetupForCloudwatch": {
       "Fn::Not": [
-        { "Fn::Equals": [ { "Ref": "CloudwatchBucketName"}, "" ] }
+        { "Fn::Equals": [ { "Ref": "CloudwatchBucketName" }, "" ] }
+      ]
+    },
+    "UseElb": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "ElbName" }, "" ] }
       ]
     }
   },
@@ -17,21 +22,32 @@
     "InstanceRoleArn": {
       "Description": "ARN of the instance role",
       "Export": {
-        "Name": { "Fn::Sub": "${AWS::StackName}-InstanceRoleArn" }
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-InstanceRoleArn"
+        }
       },
-      "Value": { "Fn::GetAtt": [ "InstanceRole", "Arn" ] }
+      "Value": {
+        "Fn::GetAtt": [
+          "InstanceRole",
+          "Arn"
+        ]
+      }
     },
     "InstanceRoleName": {
       "Description": "Name of the instance role",
       "Export": {
-        "Name": { "Fn::Sub": "${AWS::StackName}-InstanceRoleName" }
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-InstanceRoleName"
+        }
       },
       "Value": { "Ref": "InstanceRole" }
     },
     "InstanceRoleProfile": {
       "Description": "Profile of the instance role",
       "Export": {
-        "Name": { "Fn::Sub": "${AWS::StackName}-InstanceRoleProfile" }
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-InstanceRoleProfile"
+        }
       },
       "Value": { "Ref": "InstanceProfile" }
     }
@@ -45,6 +61,11 @@
     "ConfigBucketPath": {
       "Default": "",
       "Description": "S3 bucket-path to GitLab configuration template-file.",
+      "Type": "String"
+    },
+    "ElbName": {
+      "Default": "",
+      "Description": "Logical name of the Classic ELB to attach EC2 instance to.",
       "Type": "String"
     },
     "GitlabBucketName": {
@@ -96,7 +117,9 @@
                 {
                   "Fn::If": [
                     "SetupForCloudwatch",
-                    { "Fn::Join": [ "",
+                    {
+                      "Fn::Join": [
+                        "",
                         [
                           "arn:",
                           { "Ref": "AWS::Partition" },
@@ -104,7 +127,8 @@
                           { "Ref": "CloudwatchBucketName" },
                           "/*"
                         ]
-                    ]},
+                      ]
+                    },
                     { "Ref": "AWS::NoValue" }
                   ]
                 }
@@ -112,7 +136,9 @@
               "Sid": "BackupsAccess"
             },
             {
-              "Action": [ "s3:GetObject" ],
+              "Action": [
+                "s3:GetObject"
+              ],
               "Effect": "Allow",
               "Resource": [
                 {
@@ -142,12 +168,48 @@
               "Sid": "ConfigAccess"
             },
             {
+              "Fn::If": [
+                "UseElb",
+                {
+                  "Action": [
+                    "elasticloadbalancing:RegisterInstancesWithLoadBalancer"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn",
+                          ":",
+                          { "Ref": "AWS::Partition" },
+                          ":",
+                          "elasticloadbalancing",
+                          ":",
+                          { "Ref": "AWS::Region" },
+                          ":",
+                          { "Ref": "AWS::AccountId" },
+                          ":",
+                          "loadbalancer/",
+                          { "Ref": "ElbName" }
+                        ]
+                      ]
+                    }
+                  ],
+                  "Sid": "AddToElb"
+                },
+                { "Ref": "AWS::NoValue" }
+              ]
+            },
+            {
               "Action": [
                 "cloudformation:DescribeStackResource",
                 "cloudformation:SignalResource"
               ],
               "Effect": "Allow",
-              "Resource": [ "*" ],
+              "Resource": [
+                "*"
+              ],
               "Sid": "ASGsupport"
             },
             {
@@ -223,14 +285,18 @@
           ],
           "Version": "2012-10-17"
         },
-        "Roles": [ { "Ref": "InstanceRole" } ]
+        "Roles": [
+          { "Ref": "InstanceRole" }
+        ]
       },
       "Type": "AWS::IAM::ManagedPolicy"
     },
     "InstanceProfile": {
       "Properties": {
         "Path": "/",
-        "Roles": [ { "Ref": "InstanceRole" } ]
+        "Roles": [
+          { "Ref": "InstanceRole" }
+        ]
       },
       "Type": "AWS::IAM::InstanceProfile"
     },
