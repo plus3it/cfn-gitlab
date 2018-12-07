@@ -16,6 +16,11 @@
         { "Fn::Equals": [ { "Ref": "PrivateIp" }, "" ] }
       ]
     },
+    "AttachToElb": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "ElbName" }, "" ] }
+      ]
+    },
     "CreateAppVolume": {
       "Fn::Equals": [ { "Ref": "AppVolumeDevice" }, "true" ]
     },
@@ -306,6 +311,11 @@
     "ConfigBucketPath": {
       "Default": "",
       "Description": "S3 bucket-path to GitLab configuration template-file.",
+      "Type": "String"
+    },
+    "ElbName": {
+      "Default": "",
+      "Description": "Logical name of the Classic ELB to attach this instance to.",
       "Type": "String"
     },
     "GitLabConfScript": {
@@ -1876,6 +1886,28 @@
                 ";",
                 " exit 1",
                 " )\n\n",
+                {
+                  "Fn::If": [
+                    "AttachToElb",
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "# Register to Named ELB\n",
+                          "aws elb --region ",
+                          { "Ref": "AWS::Region" },
+                          " register-instances-with-load-balancer --load-balancer-name ",
+                          { "Ref": "ElbName" },
+                          " --instances ",
+                          " $( curl -skl http://169.254.169.254/latest/meta-data/instance-id/ )",
+                          "\n"
+                        ]
+                      ]
+                    },
+                    ""
+                  ]
+                },
+                "\n",
                 "--===============3585321300151562773==--"
               ]
             ]
