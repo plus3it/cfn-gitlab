@@ -6,6 +6,9 @@
         { "Fn::Equals": [ { "Ref": "GitLabPassesSsh" }, "" ] }
       ]
     },
+    "UseAcmHostedCert": {
+      "Fn::Equals": [ { "Ref": "CertHostingService" }, "ACM" ]
+    },
     "UseInstanceId": {
       "Fn::Not": [
         { "Fn::Equals": [ { "Ref": "GitLabInstanceId" }, "" ] }
@@ -27,6 +30,7 @@
             "SecurityGroupIds",
             "HaSubnets",
             "GitLabListenerCert",
+            "CertHostingService",
             "GitLabListenPort",
             "GitLabServicePort",
             "GitLabPassesSsh",
@@ -81,7 +85,7 @@
     },
     "GitLabListenerCert": {
       "Default": "",
-      "Description": "Name/ID of the ACM-managed SSL Certificate to protect public listener.",
+      "Description": "Name/ID of the SSL Certificate to protect public listener.",
       "Type": "String"
     },
     "GitLabPassesSsh": {
@@ -102,6 +106,15 @@
     "HaSubnets": {
       "Description": "Select three subnets - each from different Availability Zones.",
       "Type": "List<AWS::EC2::Subnet::Id>"
+    },
+    "CertHostingService": {
+      "AllowedValues": [
+        "ACM",
+        "IAM"
+      ],
+      "Default": "ACM",
+      "Description": "Select AWS service that is hosting the SSL certificate.",
+      "Type": "String"
     },
     "ProxyPrettyName": {
       "Description": "(Optional) A short, human-friendly label to assign to the ELB (no capital letters).",
@@ -161,22 +174,49 @@
             "LoadBalancerPort": { "Ref": "GitLabListenPort" },
             "Protocol": "HTTPS",
             "SSLCertificateId": {
-              "Fn::Join": [
-                ":",
-                [
-                  "arn:aws:acm",
-                  { "Ref": "AWS::Region" },
-                  { "Ref": "AWS::AccountId" },
-                  {
-                    "Fn::Join": [
-                      "",
-                      [
-                        "certificate/",
-                        { "Ref": "GitLabListenerCert" }
-                      ]
+              "Fn::If": [
+                "UseAcmHostedCert",
+                {
+                  "Fn::Join": [
+                    ":",
+                    [
+                      "arn",
+                      { "Ref": "AWS::Partition"},
+                      "acm",
+                      { "Ref": "AWS::Region" },
+                      { "Ref": "AWS::AccountId" },
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "certificate/",
+                            { "Ref": "GitLabListenerCert" }
+                          ]
+                        ]
+                      }
                     ]
-                  }
-                ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    ":",
+                    [
+                      "arn",
+                      { "Ref": "AWS::Partition"},
+                      "iam:",
+                      { "Ref": "AWS::AccountId" },
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "server-certificate/",
+                            { "Ref": "GitLabListenerCert" }
+                          ]
+                        ]
+                      }
+                    ]
+                  ]
+                }
               ]
             }
           }
