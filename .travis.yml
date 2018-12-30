@@ -1,30 +1,47 @@
-language: shell
+language: bash
+
 env:
   global:
     - LD_PRELOAD=/lib/x86_64-linux-gnu/libSegFault.so
     - SEGFAULT_SIGNALS=all
 
-matrix:
+jobs:
   include:
-    - env:
+    - stage: test
+      name: "Shell Syntax-Check"
+      env:
         - TESTENV=shellcheck
         - TESTCOMMAND="find $TRAVIS_BUILD_DIR -name '*.sh' -type f -print0 | xargs -0 -n1 -t shellcheck"
         - SHELLCHECK_OPTS="-s bash"
-    - env:
+      before_install:
+        - echo $TESTCOMMAND
+        - shellcheck --version
+    - stage: test
+      name: "Template JSON Syntax-Check"
+      env:
         - TESTENV=json-tool
         - TESTCOMMAND="find $TRAVIS_BUILD_DIR -name '*.json' -type f -print0 | xargs -0 -n1 -I {} -t jq --exit-status . {} > /dev/null"
-
-before_install:
-  - echo $TESTCOMMAND
-  - shellcheck --version
-
-install:
-  # Download json parser
-  - curl -sO http://stedolan.github.io/jq/download/linux64/jq
-  - chmod +x $PWD/jq
+      install:
+        # Download json parser
+        - curl -sO http://stedolan.github.io/jq/download/linux64/jq
+        - chmod +x $PWD/jq
+    - stage: test
+      name: "Template CFn Syntax-Check"
+      language: python
+      python: 3.6
+      env:
+        - TESTENV=cfn-lint
+        # E1029: Because it chokes on BASH vars in 'content' blocks
+        # E2015: Because can't identify why it's failing on the test (relevant content is valid)
+        - TESTCOMMAND="find $TRAVIS_BUILD_DIR -name '*.json' -type f -print0 | xargs -0 -n1 -I {} -t cfn-lint -i E1029,E2015 -t {} > /dev/null"
+      install:
+        - pip install cfn-lint
 
 script:
   - bash -c "$TESTCOMMAND"
+
+stages:
+  - test
 
 notifications:
   email:
