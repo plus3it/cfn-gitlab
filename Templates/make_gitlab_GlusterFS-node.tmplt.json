@@ -113,7 +113,7 @@
     "AmiId": {
       "AllowedPattern": "^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$",
       "Description": "ID of the AMI to launch",
-      "Type": "String"
+      "Type": "AWS::EC2::Image::Id"
     },
     "CfnEndpointUrl": {
       "AllowedPattern": "^$|^http://.*$|^https://.*$",
@@ -325,7 +325,7 @@
           {
             "DeviceName": "/dev/xvda",
             "Ebs": {
-              "VolumeSize": "20",
+              "VolumeSize": 20,
               "VolumeType": "gp2"
             }
           },
@@ -335,7 +335,7 @@
             {
               "DeviceName": { "Ref": "ShareVolDev" },
               "Ebs": {
-              "DeleteOnTermination": "true",
+              "DeleteOnTermination": true,
               "VolumeSize": { "Ref": "ShareVolSize" },
               "VolumeType": { "Ref": "ShareVolType" }
               }

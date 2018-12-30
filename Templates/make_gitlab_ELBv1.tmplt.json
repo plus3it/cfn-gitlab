@@ -77,10 +77,10 @@
       "Type": "String"
     },
     "GitLabListenPort": {
-      "Default": "443",
+      "Default": 443,
       "Description": "TCP Port number on which the GitLab ELB listens for requests.",
-      "MaxValue": "65535",
-      "MinValue": "1",
+      "MaxValue": 65535,
+      "MinValue": 1,
       "Type": "Number"
     },
     "GitLabListenerCert": {
@@ -90,17 +90,17 @@
     },
     "GitLabPassesSsh": {
       "AllowedValues": [
-        "false",
-        "true"
+        false,
+        true
       ],
-      "Default": "true",
+      "Default": true,
       "Description": "Whether to allow SSH passthrough to GitLab master.",
-      "Type": "String"
+      "Type": "Number"
     },
     "GitLabServicePort": {
-      "Default": "80",
+      "Default": 80,
       "Description": "TCP Port number that the GitLab host listens to.",
-      "MaxValue": "65535",
+      "MaxValue": 65535,
       "Type": "Number"
     },
     "HaSubnets": {
@@ -129,7 +129,7 @@
     "GitLabPubElb": {
       "Metadata": {},
       "Properties": {
-        "CrossZone": "true",
+        "CrossZone": true,
         "HealthCheck": {
           "HealthyThreshold": "5",
           "Interval": "30",

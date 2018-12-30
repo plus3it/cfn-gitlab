@@ -86,7 +86,6 @@
             "GitLabRpmName",
             "GitLabPrepScript",
             "GitLabConfScript",
-            "BackupFolder",
             "LdapHost",
             "LdapPort",
             "LdapCrypt",
@@ -128,10 +127,6 @@
       "MaxValue": "16384",
       "MinValue": "5",
       "Type": "Number"
-    },
-    "BackupFolder": {
-      "Description": "Folder in S3 Bucket to host backups of GitLab config-data",
-      "Type": "String"
     },
     "CfnEndpointUrl": {
       "AllowedPattern": "^$|^http://.*$|^https://.*$",
@@ -539,7 +534,7 @@
         },
         "TemplateURL": { "Ref": "GitlabEc2Template"
         },
-        "TimeoutInMinutes": "10"
+        "TimeoutInMinutes": 10
       },
       "Type": "AWS::CloudFormation::Stack"
     },
@@ -724,7 +719,7 @@
         "TemplateURL": {
           "Ref": "GitlabIamTemplate"
         },
-        "TimeoutInMinutes": "10"
+        "TimeoutInMinutes": 10
       },
       "Type": "AWS::CloudFormation::Stack"
     },
@@ -786,7 +781,7 @@
         "TemplateURL": {
           "Ref": "GitlabBucketTemplate"
         },
-        "TimeoutInMinutes": "10"
+        "TimeoutInMinutes": 10
       },
       "Type": "AWS::CloudFormation::Stack"
     },
@@ -800,7 +795,7 @@
         "TemplateURL": {
           "Ref": "SecurityGroupTemplate"
         },
-        "TimeoutInMinutes": "10"
+        "TimeoutInMinutes": 10
       },
       "Type": "AWS::CloudFormation::Stack"
     }

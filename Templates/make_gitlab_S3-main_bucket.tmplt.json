@@ -49,11 +49,6 @@
       "Description": "Number of days to retain objects before aging them out of the bucket",
       "Type": "Number"
     },
-    "Folder": {
-      "AllowedPattern": "^[a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9]*$|^$",
-      "Description": "S3 bucket-folder to host backups of GitLab config- and app-data",
-      "Type": "String"
-    },
     "ReportingBucket": {
       "AllowedPattern": "^arn:.*$|^$",
       "ConstraintDescription": "String must start with 'arn:' (or be left wholly blank).",
@@ -121,7 +116,7 @@
                   "Format": "CSV",
                   "Prefix": "StorageReporting/Inventory"
                 },
-                "Enabled": "true",
+                "Enabled": true,
                 "Id": "Inventory",
                 "IncludedObjectVersions": "Current",
                 "Prefix": "Backups/",

@@ -66,7 +66,6 @@
             "default": "RDS Network Configuration"
           },
           "Parameters": [
-            "TargetVPC", 
             "DbSubnets",
             "DbSecurityGroup"
           ]
@@ -213,11 +212,6 @@
       "Default": "9.6.10",
       "Description": "The X.Y.Z version of the PostGreSQL database to deploy.",
       "Type": "String"
-    },
-    "TargetVPC": {
-      "AllowedPattern": "^vpc-[0-9a-f]*$",
-      "Description": "ID of the VPC to deploy cluster nodes into.",
-      "Type": "AWS::EC2::VPC::Id"
     }
   },
   "Resources": {
@@ -225,8 +219,8 @@
       "Metadata": {},
       "Properties": {
         "AllocatedStorage": { "Ref": "DbDataSize" },
-        "AllowMajorVersionUpgrade": "true",
-        "AutoMinorVersionUpgrade": "true",
+        "AllowMajorVersionUpgrade": true,
+        "AutoMinorVersionUpgrade": true,
         "BackupRetentionPeriod": "7",
         "DBInstanceClass": { "Ref": "DbInstanceType" },
         "DBInstanceIdentifier": {
@@ -272,7 +266,7 @@
         "MultiAZ": { "Ref": "DbIsMultiAz" },
         "PreferredBackupWindow": "23:30-00:00",
         "PreferredMaintenanceWindow": "sun:00:30-sun:01:00",
-        "PubliclyAccessible": "false",
+        "PubliclyAccessible": false,
         "StorageType": { "Ref": "DbStorageType" },
         "VPCSecurityGroups": { "Ref": "DbSecurityGroup" }
       },

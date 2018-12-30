@@ -623,7 +623,7 @@
           "WatchmakerS3Source": { "Ref": "WatchmakerS3Source" }
         },
         "TemplateURL": { "Ref": "GitlabAsgTemplate" },
-        "TimeoutInMinutes": "10"
+        "TimeoutInMinutes": 10
       },
       "Type": "AWS::CloudFormation::Stack"
     },
@@ -652,7 +652,7 @@
           }
         },
         "TemplateURL": { "Ref": "GitlabElbTemplate" },
-        "TimeoutInMinutes": "10"
+        "TimeoutInMinutes": 10
       },
       "Type": "AWS::CloudFormation::Stack"
     },
@@ -669,7 +669,7 @@
           "ServiceTld": { "Ref": "ServiceTld" }
         },
         "TemplateURL": { "Ref": "GitlabEfsTemplate" },
-        "TimeoutInMinutes": "10"
+        "TimeoutInMinutes": 10
       },
       "Type": "AWS::CloudFormation::Stack"
     },
@@ -685,7 +685,7 @@
           "ServiceTld": { "Ref": "ServiceTld" }
         },
         "TemplateURL": { "Ref": "GitlabIamTemplate" },
-        "TimeoutInMinutes": "10"
+        "TimeoutInMinutes": 10
       },
       "Type": "AWS::CloudFormation::Stack"
     },
@@ -719,7 +719,7 @@
           "GitlabBucket": { "Ref": "GitlabBucket" }
         },
         "TemplateURL": { "Ref": "GitlabBucketTemplate" },
-        "TimeoutInMinutes": "10"
+        "TimeoutInMinutes": 10
       },
       "Type": "AWS::CloudFormation::Stack"
     },
@@ -729,7 +729,7 @@
           "TargetVPC": { "Ref": "TargetVPC" }
         },
         "TemplateURL": { "Ref": "SecurityGroupTemplate" },
-        "TimeoutInMinutes": "10"
+        "TimeoutInMinutes": 10
       },
       "Type": "AWS::CloudFormation::Stack"
     }
