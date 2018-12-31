@@ -582,12 +582,99 @@
               }
             }
           },
-          "app-install": {
+          "app-prep": {
+            "commands": {
+              "10-config_svc-reload": {
+                "command": "systemctl daemon-reload"
+              },
+              "20-config_svc-reload": {
+                "command": "systemctl enable gitlab-config.service"
+              }
+            },
             "files": {
               "/etc/cfn/scripts/glprep.sh": {
                 "source": { "Ref": "GitLabConfScript" },
                 "group": "root",
                 "mode": "000700",
+                "owner": "root"
+              },
+              "/etc/systemd/system/gitlab-config.service": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[Unit]\n",
+                      "Description=Reconfigure GitLab to work on this host\n",
+                      "After=multi-user.target\n",
+                      "\n",
+                      "[Service]\n",
+                      "Type=oneshot\n",
+                      "ExecStart=/etc/cfn/scripts/glprep.sh\n",
+                      "\n",
+                      "[Install]\n",
+                      "WantedBy=multi-user.target\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000644",
+                "owner": "root"
+              },
+              "/etc/cfn/scripts/glprep-signal.sh": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash\n",
+                      "#\n",
+                      "# Small script to send a post-reboot CFn signal\n",
+                      "#\n",
+                      "###################################################\n",
+                      "PATH=${PATH}:/opt/aws/bin\n",
+                      "\n",
+                      "logger -p kern.info -t ${0} -s \"Sending signal '${1}' to CFn...\"\n",
+                      "\n",
+                      "cfn-signal -e ${1} --stack ",
+                      { "Ref": "AWS::StackName" },
+                      " --resource GitLabMaster",
+                      {
+                        "Fn::If": [
+                          "AssignInstanceRole",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --role ",
+                                { "Ref": "InstanceRoleName" }
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      {
+                        "Fn::If": [
+                          "UseCfnUrl",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --url ",
+                                { "Ref": "CfnEndpointUrl" }
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      " --region ",
+                      { "Ref": "AWS::Region" },
+                      "\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000755",
                 "owner": "root"
               },
               "/etc/cron.d/GitLabBackup": {
@@ -647,11 +734,6 @@
                 "mode": "000700",
                 "owner": "root"
               }
-            },
-            "commands": {
-              "10-app-install": {
-                "command": "bash -xe /etc/cfn/scripts/glprep.sh"
-              }
             }
           },
           "configSets": {
@@ -686,12 +768,11 @@
                   "UseCfnAppInstaller",
                   [
                     "gitlab-tmplt-fetch",
-                    "app-install"
+                    "app-prep"
                   ],
                   { "Ref" : "AWS::NoValue" }
                 ]
               },
-              "finalize",
               {
                 "Fn::If": [
                   "Reboot",
@@ -731,12 +812,11 @@
                   "UseCfnAppInstaller",
                   [
                     "gitlab-tmplt-fetch",
-                    "app-install"
+                    "app-prep"
                   ],
                   { "Ref" : "AWS::NoValue" }
                 ]
               },
-              "finalize",
               {
                 "Fn::If": [
                   "Reboot",

@@ -150,11 +150,6 @@
       "Description": "Number of days to retain objects before aging them out of the bucket",
       "Type": "Number"
     },
-    "Folder": {
-      "AllowedPattern": "^[a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9]*$|^$",
-      "Description": "S3 bucket-folder to host backups of GitLab config- and app-data",
-      "Type": "String"
-    },
     "GitLabListenerCert": {
       "Default": "",
       "Description": "Name/ID of the ACM-managed SSL Certificate to protect public listener.",
@@ -356,8 +351,7 @@
               { "Ref": "HaSvcSubnets" }
             ]
           },
-          "PgsqlVersion": { "Ref": "PgsqlVersion" },
-          "TargetVPC": { "Ref": "TargetVPC" }
+          "PgsqlVersion": { "Ref": "PgsqlVersion" }
         },
         "TemplateURL": { "Ref": "GitlabRdsTemplate" },
         "TimeoutInMinutes": 120
@@ -370,7 +364,6 @@
           "BucketInventoryTracking": { "Ref": "BucketInventoryTracking" },
           "BucketName": { "Ref": "GitlabBucket" },
           "FinalExpirationDays": { "Ref": "FinalExpirationDays" },
-          "Folder": { "Ref": "Folder" },
           "ReportingBucket": { "Ref": "ReportingBucket" },
           "RetainIncompleteDays": { "Ref": "RetainIncompleteDays" },
           "TierToGlacierDays": { "Ref": "TierToGlacierDays" }

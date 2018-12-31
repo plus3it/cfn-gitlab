@@ -4,6 +4,7 @@
 #
 #################################################################
 PROGNAME=$(basename "${0}")
+export PATH=${PATH}:/opt/aws/bin
 # Read in template envs we might want to use
 while read -r GLENV
 do
@@ -34,8 +35,8 @@ UPLOADLNK="/var/opt/gitlab/gitlab-rails/uploads"
 # Log errors and exit
 #####
 function err_exit {
-   echo "${1}" > /dev/stderr
-   logger -t "${PROGNAME}" -p kern.crit "${1}"
+   logger -s -t "${PROGNAME}" -p kern.crit "${1}"
+   /etc/cfn/scripts/glprep-signal.sh 1
    exit 1
 }
 
@@ -229,3 +230,8 @@ setenforce 1 || \
    err_exit "Failed to reactivate SELinux"
 echo "Re-enabled SELinux"
 
+# Really only need this to run once...
+systemctl disable gitlab-config.service
+
+# Send success to CFn
+/etc/cfn/scripts/glprep-signal.sh 0

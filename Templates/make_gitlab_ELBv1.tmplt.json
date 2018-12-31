@@ -95,7 +95,7 @@
       ],
       "Default": true,
       "Description": "Whether to allow SSH passthrough to GitLab master.",
-      "Type": "Number"
+      "Type": "String"
     },
     "GitLabServicePort": {
       "Default": 80,
