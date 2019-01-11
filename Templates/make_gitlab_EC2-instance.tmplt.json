@@ -156,11 +156,63 @@
           "Parameters": [
             "AmiId",
             "InstanceType",
+            "RootVolumeSize",
+            "ProvisionUser",
             "KeyPairName",
+            "AdminPubkeyURL",
+            "SecurityGroupIds",
+            "InstanceRoleName",
+            "InstanceRoleProfile",
+            "SubnetId",
+            "PrivateIp",
             "NoPublicIp",
             "NoReboot",
             "NoUpdates",
-            "SecurityGroupIds"
+            "ToggleCfnInitUpdate"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Application Configuration"
+          },
+          "Parameters": [
+            "GitLabRpmSourceUri",
+            "GitLabRpmName",
+            "GitLabConfScript",
+            "GitLabPrepScript",
+            "ConfigBucketPath",
+            "AppVolumeDevice",
+            "AppVolumeMountPath",
+            "AppVolumeSize",
+            "AppVolumeType",
+            "GitRepoShareType",
+            "GitRepoShareUri",
+            "ElbName",
+            "ProxyName",
+            "BackupBucket",
+            "BackupFolder"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Database Configuration"
+          },
+          "Parameters": [
+            "RdsDbHost",
+            "RdsDbInstance",
+            "RdsDbAdmin",
+            "RdsDbPasswd"
+          ]
+        },
+        {
+          "Label": {
+            "default": "CloudFormation Configuration"
+          },
+          "Parameters": [
+            "CfnEndpointUrl",
+            "CfnGetPipUrl",
+            "CfnBootstrapUtilsUrl",
+            "CloudWatchAgentUrl"
           ]
         },
         {
@@ -175,38 +227,6 @@
             "WatchmakerComputerName",
             "WatchmakerAdminGroups",
             "WatchmakerAdminUsers"
-          ]
-        },
-        {
-          "Label": {
-            "default": "EC2 Application EBS Volume"
-          },
-          "Parameters": [
-            "AppVolumeDevice",
-            "AppVolumeMountPath",
-            "AppVolumeSize",
-            "AppVolumeType"
-          ]
-        },
-        {
-          "Label": {
-            "default": "Network Configuration"
-          },
-          "Parameters": [
-            "PrivateIp",
-            "SubnetId"
-          ]
-        },
-        {
-          "Label": {
-            "default": "CloudFormation Configuration"
-          },
-          "Parameters": [
-            "CfnEndpointUrl",
-            "CfnGetPipUrl",
-            "CfnBootstrapUtilsUrl",
-            "CloudWatchAgentUrl",
-            "ToggleCfnInitUpdate"
           ]
         }
       ],

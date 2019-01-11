@@ -768,18 +768,157 @@
               }
             }
           },
-          "app-install": {
+          "app-prep": {
+                      "commands": {
+              "10-config_svc-reload": {
+                "command": "systemctl daemon-reload"
+              },
+              "20-config_svc-reload": {
+                "command": "systemctl enable gitlab-config.service"
+              }
+            },
             "files": {
               "/etc/cfn/scripts/glprep.sh": {
                 "source": { "Ref": "GitLabConfScript" },
                 "group": "root",
                 "mode": "000700",
                 "owner": "root"
-              }
-            },
-            "commands": {
-              "10-app-install": {
-                "command": "bash -xe /etc/cfn/scripts/glprep.sh"
+              },
+              "/etc/systemd/system/gitlab-config.service": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[Unit]\n",
+                      "Description=Reconfigure GitLab to work on this host\n",
+                      "After=multi-user.target\n",
+                      "\n",
+                      "[Service]\n",
+                      "Type=oneshot\n",
+                      "ExecStart=/etc/cfn/scripts/glprep.sh\n",
+                      "\n",
+                      "[Install]\n",
+                      "WantedBy=multi-user.target\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000644",
+                "owner": "root"
+              },
+              "/etc/cfn/scripts/glprep-signal.sh": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash\n",
+                      "#\n",
+                      "# Small script to send a post-reboot CFn signal\n",
+                      "#\n",
+                      "###################################################\n",
+                      "PATH=${PATH}:/opt/aws/bin\n",
+                      "\n",
+                      "logger -p kern.info -t ${0} -s \"Sending signal '${1}' to CFn...\"\n",
+                      "\n",
+                      "cfn-signal -e ${1} --stack ",
+                      { "Ref": "AWS::StackName" },
+                      " --resource GitLabASG",
+                      {
+                        "Fn::If": [
+                          "AssignInstanceRole",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --role ",
+                                { "Ref": "InstanceRoleName" }
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      {
+                        "Fn::If": [
+                          "UseCfnUrl",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --url ",
+                                { "Ref": "CfnEndpointUrl" }
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      " --region ",
+                      { "Ref": "AWS::Region" },
+                      "\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000755",
+                "owner": "root"
+              },
+              "/etc/cron.d/GitLabBackup": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "SHELL=/bin/bash\n",
+                      "PATH=/sbin:/bin:/usr/sbin:/usr/bin\n",
+                      "MAILTO=\"\"\n",
+                      "\n",
+                      "0 23 * * * root /usr/local/bin/gitlab-backup.cron\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000644",
+                "owner": "root"
+              },
+              "/usr/local/bin/gitlab-backup.cron": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash\n",
+                      "#\n",
+                      "# Script to backup GitLab data to S3 bucket\n",
+                      "#################################################################\n",
+                      "PROGNAME=$(basename \"${0}\")\n",
+                      "LOGFACIL=\"user.err\"\n",
+                      "for VAR in $(cat /etc/cfn/GitLab.envs)\n",
+                      "do\n",
+                      "   export $VAR\n",
+                      "done\n",
+                      "BUCKET=\"${GITLAB_BACKUP_BUCKET:-UNDEF}\"\n",
+                      "FOLDER=\"${GITLAB_BACKUP_FOLDER:-UNDEF}\"\n",
+                      "REGION=\"${GITLAB_AWS_REGION:-UNDEF}\"\n",
+                      "DAYSUB=\"$(date '+%A')\"\n",
+                      "SRCDIR=/var/opt/gitlab/backups/\n",
+                      "            \n",
+                      "# Set up flexible logging\n",
+                      "function err_exit {\n",
+                      "   echo \"${1}\"\n",
+                      "   logger -t \"${PROGNAME}\" -p ${LOGFACIL} \"${1}\"\n",
+                      "   exit 1\n",
+                      "}\n",
+                      "\n",
+                      "# Create GitLab archive file\n",
+                      "printf \"Creating backup archive-file in s3://%s...\" \"${BUCKET}\"\n",
+                      "gitlab-rake gitlab:backup:create STRATEGY=copy DIRECTORY=\"${FOLDER}\" ",
+                        "CRON=1 &&  echo \"Success\" || ",
+                        "err_exit 'Failed creating backup archive-file'\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000700",
+                "owner": "root"
               }
             }
           },
@@ -803,13 +942,12 @@
                   [
                     "gitlab-tmplt-fetch",
                     "osprep",
-                    "app-install",
+                    "app-prep",
                     "enable-backups"
                   ],
                   { "Ref": "AWS::NoValue" }
                 ]
               },
-              "finalize",
               {
                 "Fn::If": [
                   "Reboot",
@@ -837,13 +975,12 @@
                   [
                     "gitlab-tmplt-fetch",
                     "osprep",
-                    "app-install",
+                    "app-prep",
                     "enable-backups"
                   ],
                   { "Ref": "AWS::NoValue" }
                 ]
               },
-              "finalize",
               {
                 "Fn::If": [
                   "Reboot",
