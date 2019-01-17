@@ -37,8 +37,22 @@
           "Parameters": [
             "GitlabElbSubnets",
             "GitLabServicePort",
-            "GitLabListenerCert",
-            "GitLabPassesSsh"
+            "GitLabPassesSsh",
+            "CertHostingService",
+            "GitLabListenerCert"
+          ]
+        },
+        {
+          "Label": {
+            "default": "S3 Enablement"
+          },
+          "Parameters": [
+            "GitlabBucket",
+            "TierToGlacierDays",
+            "FinalExpirationDays",
+            "RetainIncompleteDays",
+            "BucketInventoryTracking",
+            "ReportingBucket"
           ]
         },
         {
@@ -46,10 +60,11 @@
             "default": "Miscellaneous"
           },
           "Parameters": [
+            "ConfigBucketPath",
             "TargetVPC",
             "HaSvcSubnets",
-            "GitlabBucket",
-            "RolePrefix"
+            "RolePrefix",
+            "CloudwatchBucketName"
           ]
         }
       ]
@@ -80,6 +95,15 @@
       ],
       "Default": "false",
       "Description": "(Optional) Whether to enable generic bucket inventory-tracking. Requires setting of the 'BackupReportingBucket' parameter.",
+      "Type": "String"
+    },
+    "CertHostingService": {
+      "AllowedValues": [
+        "ACM",
+        "IAM"
+      ],
+      "Default": "ACM",
+      "Description": "Select AWS service that is hosting the SSL certificate.",
       "Type": "String"
     },
     "CloudwatchBucketName": {
@@ -140,7 +164,7 @@
       "Type": "String"
     },
     "DbNodeName": {
-      "Description": "NodeName of the GitLab database.",
+      "Description": "(Optional: will be generated if not supplied) NodeName of the GitLab database.",
       "Type": "String"
     },
     "FinalExpirationDays": {
@@ -180,7 +204,7 @@
       "Type": "String"
     },
     "GitlabElbSubnets": {
-      "Description": "Select three subnets - each from different Availability Zones.",
+      "Description": "Select three subnets - each from different Availability Zones - accessible to the GitLab clients.",
       "Type": "List<AWS::EC2::Subnet::Id>"
     },
     "GitlabElbTemplate": {
@@ -268,6 +292,7 @@
     "ElbRes": {
       "Properties": {
         "Parameters": {
+          "CertHostingService": { "Ref": "CertHostingService" },
           "GitLabListenPort": "443",
           "GitLabListenerCert": { "Ref": "GitLabListenerCert" },
           "GitLabPassesSsh": { "Ref": "GitLabPassesSsh" },

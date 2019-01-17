@@ -83,6 +83,15 @@
       "Description": "(Optional) Whether to enable generic bucket inventory-tracking. Requires setting of the 'BackupReportingBucket' parameter.",
       "Type": "String"
     },
+    "CertHostingService": {
+      "AllowedValues": [
+        "ACM",
+        "IAM"
+      ],
+      "Default": "ACM",
+      "Description": "Select AWS service that is hosting the SSL certificate.",
+      "Type": "String"
+    },
     "CloudwatchBucketName": {
       "Description": "Name of the S3 Bucket hosting the CloudWatch agent archive files",
       "Type": "String"
@@ -295,6 +304,7 @@
     "ElbRes": {
       "Properties": {
         "Parameters": {
+          "CertHostingService": { "Ref": "CertHostingService" },
           "GitLabListenPort": "443",
           "GitLabListenerCert": { "Ref": "GitLabListenerCert" },
           "GitLabPassesSsh": { "Ref": "GitLabPassesSsh" },
