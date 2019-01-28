@@ -54,7 +54,7 @@ The following table lists the template-variables that the CFn scripts will autom
 
 |Templated Value|Explanation|
 |:--------------|:----------|
-|__RDS_DB_INSTANCE__|Datbase instance-name that GitLab will use|
+|__RDS_DB_INSTANCE__|Database instance-name that GitLab will use|
 |__RDS_DB_ADMIN__|Database instance's admin account-name|
 |__RDS_DB_PASSWD__|Database admin's account-name|
 |__RDS_DB_FQDN__|FQDN of the external DB GitLab will use|
@@ -66,7 +66,7 @@ The following table lists (some of) the GitLab configuration parameters values t
 
 |Variable Name |Explanation|
 |:-------------|:-------------|
-|`${SMTP_RELAY_FQDN}`|FQDN of the host that will be used for SMTP relay-service (typicall the region-appropriate [SES](https://aws.amazon.com/ses/) host)|
+|`${SMTP_RELAY_FQDN}`|FQDN of the host that will be used for SMTP relay-service (typical the region-appropriate [SES](https://aws.amazon.com/ses/) host)|
 |`${SMTP_USER}`|Userid used for authenticated SMTP-relaying|
 |`${SMTP_USER_PASSWORD}`|Password for the authenticated relay-user|
 |`${SMTP_MAIL_DOMAIN}`|DNS domain of the service|
