@@ -81,7 +81,7 @@
     },
     {
         "ParameterKey": "GitLabServicePort",
-        "ParameterValue": "80"
+        "ParameterValue": "<PORT_NUMBER_INTERNAL_GITLAB_INSTANCE_LISTENS_ON>"
     },
     {
         "ParameterKey": "HaSvcSubnets",
@@ -97,7 +97,7 @@
     },
     {
         "ParameterKey": "RetainIncompleteDays",
-        "ParameterValue": "2"
+        "ParameterValue": "<HOW_LONG_TO_KEEP_BOTCHED_UPLOADS>"
     },
     {
         "ParameterKey": "RolePrefix",
