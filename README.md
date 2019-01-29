@@ -1,4 +1,4 @@
-# dotc-gitlab
+# Gitlab
 
 This project was undertaken to automate the deployment of the git repository service, [GitLab](https://gitlab.com), onto Enterprise Linux 7 (Red Hat, CentOS, etc.) hosts. Currently, this, project's automation focuses on using AWS CFn templates to deploy GitLab onto EC2-hosted instances.
 
@@ -6,7 +6,7 @@ CFn deployment takes the form of parent/driver stacks and child stacks. Each of 
 
 - EC2 instance to host the application
 - EFS storage to provide persistent repository storage across EC2 instantiations
-- ELB to provide public-facing access to EC2 instances proisioned on private subnets
+- ELB to provide public-facing access to EC2 instances provisioned on private subnets
 - GlusterFS cluster to act as an alternative to EFS in AWS regions that lack the EFS service
 - IAM to manage access permissions from EC2 resources to S3 resources
 - RDS to host persistent configuration information
@@ -19,7 +19,6 @@ The EC2 template links out to two support scripts as well as a STIG-hardening ut
 
 Administrators can deploy the latest version of GitLab or specific versions targeted to the major, major.minor or major.minor.point release. Release-targeting is designed to support specific deployment-environments' needs with respect to controlled-release methodologies. It is primarily expected that administrators will target major releases or major.minor releases. Targeting dot-releases are primarily for pre-upgrade testing and to support upgrades from one major-release to another (via parallel standup and migration).
 
-The templates and scripts will enable GitLab administrators to more-easily use a "redeploy to upgrade" model - whether upgrading the underlying operating system or the GitLab software itself. 
+The templates and scripts will enable GitLab administrators to more-easily use a "redeploy to upgrade" model - whether upgrading the underlying operating system or the GitLab software itself.
 
 ![Build Status](https://travis-ci.org/plus3it/dotc-gitlab.svg?branch=master)
-
