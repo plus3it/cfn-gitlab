@@ -29,6 +29,7 @@ FWSVCS=(
           http
           https
         )
+SHAREURI=${GITLAB_SHARE_URI:-UNDEF}
 SHARETYPE=${GITLAB_SHARE_TYPE:-UNDEF}
 
 
@@ -37,6 +38,13 @@ function err_exit {
    echo "${1}"
    logger -t "${PROGNAME}" -p ${LOGFACIL} "${1}"
    exit 1
+}
+
+function NoIpv6localhost {
+   if [[ $( grep -q localhost6 /etc/hosts )$? -eq 0 ]]
+   then
+      sed -i '/localhost6/s/^/## /' /etc/hosts
+   fi
 }
 
 # Open firewall ports
@@ -115,10 +123,77 @@ function InstGitlab {
    fi
 }
 
+#
+# Ensure persistent data storage is valid
+function ValidShare {
+   SHARESRVR="${SHAREURI/\:*/}"
+   SHAREPATH=${SHAREURI/${SHARESRVR}\:\//}
+
+   echo "Attempting to validate share-path"
+   printf "\t- Attempting to mount %s... " "${SHARESRVR}"
+   if [[ ${SHARETYPE} = glusterfs ]]
+   then
+      mount -t "${SHARETYPE}" "${SHARESRVR}":/"${SHAREPATH}" /mnt && echo "Success" ||
+        err_exit "Failed to mount ${SHARESRVR}"
+   elif [[ ${SHARETYPE} = nfs ]]
+   then
+      mount -t "${SHARETYPE}" "${SHARESRVR}":/ /mnt && echo "Success" ||
+        err_exit "Failed to mount ${SHARESRVR}"
+      printf "\t- Looking for %s in %s... " "${SHAREPATH}" "${SHARESRVR}"
+      if [[ -d /mnt/${SHAREPATH} ]]
+      then
+         echo "Success"
+      else
+         echo "Not found."
+         printf "Attempting to create %s in %s... " "${SHAREPATH}" "${SHARESRVR}"
+         mkdir /mnt/"${SHAREPATH}" && echo "Success" ||
+           err_exit "Failed to create ${SHAREPATH} in ${SHARESRVR}"
+      fi
+   fi
+
+   printf "Cleaning up... "
+   umount /mnt && echo "Success" || echo "Failed"
+
+   # Ensure that mountpoint for persistent-data directory exists
+   if [[ ! -d /var/opt/gitlab/git-data ]]
+   then
+       install -Ddm 000755 /var/opt/gitlab/git-data
+   fi
+
+   echo "Configure NAS-based persisted data..."
+   case ${SHARETYPE} in
+      UNDEF)
+         echo "No network share declared for persisting git repository data"
+         ;;
+      nfs)
+         echo "Adding NFS-hosted, persisted git repository data to fstab"
+         (
+          printf "%s\t/var/opt/gitlab/git-data\tnfs4\trw,relatime,vers=4.1," "${SHAREURI}" ;
+          printf "rsize=1048576,wsize=1048576,namlen=255,hard,";
+          printf "proto=tcp,timeo=600,retrans=2\t0 0\n"
+         ) >> /etc/fstab || err_exit "Failed to add NFS volume to fstab"
+         mount /var/opt/gitlab/git-data || err_exit "Failed to mount GitLab repository dir"
+         ;;
+      glusterfs)
+         echo "Adding Gluster-hosted, persisted git repository data to fstab"
+         (
+          printf "%s\t/var/opt/gitlab/git-data\tglusterfs\t" "${SHAREURI}" ;
+          printf "defaults\t0 0\n"
+         ) >> /etc/fstab || err_exit "Failed to add Gluster volume to fstab"
+         mount /var/opt/gitlab/git-data || err_exit "Failed to mount GitLab repository dir"
+         ;;
+   esac
+}
+
 
 ###############
 ## Main Program
 ###############
+
+# Make sure no 'localhost6' entry active in /etc/hosts
+NoIpv6localhost
+
+# Add RPMs based on share-server type
 if [[ ${SHARETYPE} = nfs ]]
 then
    DEPRPMS+=(
@@ -197,57 +272,24 @@ then
    echo "Successfully nstalled Software CoLlections repodefs"
 fi
 
+# Which ruby to install
+case $( repoquery ${GITLAB_RPM_NAME} --qf '%{version}\n' | cut -d '.' -f 1 ) in
+   10) RUBYVERS=rh-ruby23
+       ;;
+   11) RUBYVERS=rh-ruby24
+       ;;
+esac
+
 # Install a Ruby version that is FIPS compatible
-yum --enablerepo=*scl* install -y rh-ruby23 || \
+yum --enablerepo=*scl* install -y ${RUBYVERS} || \
    err_exit "Install of updated Ruby RPM failed."
 echo "Installed updated Ruby RPM"
 
 # Permanently eable the SCL version of Ruby
 cat << EOF > /etc/profile.d/scl-ruby.sh
-source /opt/rh/rh-ruby23/enable
-export X_SCLS="\$(scl enable rh-ruby23 'echo \$X_SCLS')"
+source /opt/rh/${RUBYVERS}/enable
+export X_SCLS="\$(scl enable ${RUBYVERS} 'echo \$X_SCLS')"
 EOF
-
-# Create GitLab backup script
-install -b -m 0700 /dev/null /usr/local/bin/backup.cron ||
-  echo "Couldn't create backup script"
-cat << EOF > /usr/local/bin/backup.cron
-#!/bin/bash
-#
-# Script to backup GitLab data to S3 bucket
-#################################################################
-PROGNAME=\$(basename "\${0}")
-LOGFACIL="user.err"
-for VAR in \$(cat /etc/cfn/GitLab.envs)
-do
-   export \$VAR
-done
-BUCKET="\${GITLAB_BACKUP_BUCKET:-UNDEF}"
-FOLDER="\${GITLAB_BACKUP_FOLDER:-UNDEF}"
-REGION="\${GITLAB_AWS_REGION:-UNDEF}"
-DAYSUB="\$(date '+%A')"
-SRCDIR=/var/opt/gitlab/backups/
-
-# Set up flexible logging
-function err_exit {
-   echo "\${1}"
-   logger -t "\${PROGNAME}" -p \${LOGFACIL} "\${1}"
-   exit 1
-}
-
-# Create GitLab archive file
-printf "Creating backup archive-file in s3://%s..." "\${BUCKET}"
-gitlab-rake gitlab:backup:create STRATEGY=copy DIRECTORY="\${FOLDER}" CRON=1 &&\
-  echo "Success" || err_exit 'Failed creating backup archive-file'
-
-EOF
-
-# Here documents are weird about status-capture, so...
-# shellcheck disable=SC2181
-if [[ $? -ne 0 ]]
-then
-   echo "Couldn't insert backup script content"
-fi
 
 # Add backupscript to crontab
 printf "Adding backup job to root's cron... "
@@ -276,3 +318,7 @@ echo "Shut off FIPS-checking in embedded Chef Gem"
 printf "Installing GitLab CE"
 InstGitlab && \
 echo "Install succeeded. Gitlab must now be configured"
+
+# Set up persistent storage directory
+ValidShare
+

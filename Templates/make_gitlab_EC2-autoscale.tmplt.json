@@ -12,7 +12,12 @@
       ]
     },
     "CreateAppVolume": {
-      "Fn::Equals": [ { "Ref": "BackupVolumeDevice" }, "true" ]
+      "Fn::Equals": [ { "Ref": "AppVolumeDevice" }, "true" ]
+    },
+    "InstallCloudWatchAgent": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "CloudWatchAgentUrl" }, "" ] }
+      ]
     },
     "InstallUpdates": {
       "Fn::Not": [
@@ -64,6 +69,16 @@
         { "Fn::Equals": [ { "Ref": "NoReboot" }, "true" ] }
       ]
     },
+    "UseAdminGroups": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "WatchmakerAdminGroups" }, "" ] }
+      ]
+    },
+    "UseAdminUsers": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "WatchmakerAdminUsers" }, "" ] }
+      ]
+    },
     "UseCfnUrl": {
       "Fn::Not": [
         { "Fn::Equals": [ { "Ref": "CfnEndpointUrl" }, "" ] }
@@ -71,7 +86,20 @@
     },
     "UseCfnAppInstaller": {
       "Fn::Not": [
-        { "Fn::Equals": [ { "Ref": "GitLabConfScript" }, "" ] }
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "GitLabConfScript"
+            },
+            ""
+          ]
+        }
+      ]
+    },
+    "UseElbHealthCheck": {
+      "Fn::Or": [
+        { "Condition": "UseLoadBalancerNames" },
+        { "Condition": "UseTargetGroupArns" }
       ]
     },
     "UseEnvironment": {
@@ -84,15 +112,62 @@
         { "Fn::Equals": [ { "Ref": "KeyPairName" }, "" ] }
       ]
     },
-    "UseS3Source": {
+    "UseLoadBalancerNames": {
       "Fn::Not": [
-        { "Fn::Equals": [ { "Ref": "WatchmakerS3Source" }, "false" ] }
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Join": [
+                "",
+                { "Ref": "LoadBalancerNames" }
+              ]
+            },
+            ""
+          ]
+        }
+      ]
+    },
+    "UseOuPath": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "WatchmakerOuPath" }, "" ] }
+      ]
+    },
+    "UseScheduledAction": {
+      "Fn::And": [
+        {
+          "Fn::Not": [
+            { "Fn::Equals": [ { "Ref": "ScaleUpSchedule" }, "" ] }
+          ]
+        },
+        {
+          "Fn::Not": [
+            { "Fn::Equals": [ { "Ref": "ScaleDownSchedule" }, "" ] }
+          ]
+        }
+      ]
+    },
+    "UseTargetGroupArns": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Join": [
+                "",
+                { "Ref": "TargetGroupArns" }
+              ]
+            },
+            ""
+          ]
+        }
       ]
     },
     "UseWamConfig": {
       "Fn::Not": [
         { "Fn::Equals": [ { "Ref": "WatchmakerConfig" }, "" ] }
       ]
+    },
+    "UseWatchmaker": {
+      "Fn::Equals": [ { "Ref": "WatchmakerAvailable" }, "true" ]
     }
   },
   "Description": "This template creates an Autoscaling Group and Launch Configuration to deploy a STIG-hardened EL7 Linux instance to host the GitLab service/application.",
@@ -116,75 +191,79 @@
             "default": "EC2 Instance Configuration"
           },
           "Parameters": [
-            "Hostname",
-            "Domainname",
             "AmiId",
             "InstanceType",
-            "DesiredCapacity",
-            "MinCapacity",
-            "MaxCapacity",
+            "RootVolumeSize",
             "ProvisionUser",
             "KeyPairName",
             "AdminPubkeyURL",
             "SubnetIds",
             "NoPublicIp",
-            "NoReboot",
-            "NoUpdates",
             "SecurityGroupIds",
             "InstanceRoleName",
-            "InstanceRoleProfile"
+            "InstanceRoleProfile",
+            "NoReboot",
+            "NoUpdates"
           ]
         },
         {
           "Label": {
-            "default": "EC2 Watchmaker Configuration"
+            "default": "AutoScale Configuration"
           },
           "Parameters": [
-            "EpelRepo",
-            "PipRpm",
-            "PyStache",
-            "PipIndexFips",
-            "WatchmakerConfig",
-            "WatchmakerEnvironment",
-            "WatchmakerS3Source"
+            "DesiredCapacity",
+            "MinCapacity",
+            "MaxCapacity",
+            "ScaleDownSchedule",
+            "ScaleUpSchedule",
+            "TargetGroupArns",
+            "LoadBalancerNames"
           ]
         },
         {
           "Label": {
-            "default": "Instance Storage Configuration"
+            "default": "GitLab Storage Configuration"
           },
           "Parameters": [
+            "AppVolumeDevice",
+            "AppVolumeMountPath",
+            "AppVolumeSize",
+            "AppVolumeType",
             "GitRepoShareUri",
             "GitRepoShareType",
-            "BackupVolumeDevice",
-            "BackupVolumeMountPath",
-            "BackupVolumeSize",
-            "BackupVolumeType",
             "BackupBucket",
             "BackupFolder"
           ]
         },
         {
           "Label": {
-            "default": "Application Configuration"
+            "default": "GitLab Application Install/Config"
           },
           "Parameters": [
+            "GitLabRpmSourceUri",
+            "GitLabRpmName",
             "GitLabPrepScript",
             "GitLabConfScript",
             "ConfigBucketPath",
-            "GitLabRpmSourceUri",
-            "GitLabRpmName"
+            "RdsDbHost",
+            "RdsDbInstance",
+            "RdsDbAdmin",
+            "RdsDbPasswd",
+            "ProxyName"
           ]
         },
         {
           "Label": {
-            "default": "Database Configuration"
+            "default": "Watchmaker Configuration"
           },
           "Parameters": [
-            "RdsDbHost",
-            "RdsDbInstance",
-            "RdsDbAdmin",
-            "RdsDbPasswd"
+            "PypiIndexUrl",
+            "WatchmakerComputerName",
+            "WatchmakerConfig",
+            "WatchmakerEnvironment",
+            "WatchmakerOuPath",
+            "WatchmakerAdminGroups",
+            "WatchmakerAdminUsers"
           ]
         },
         {
@@ -193,6 +272,9 @@
           },
           "Parameters": [
             "CfnEndpointUrl",
+            "CfnGetPipUrl",
+            "CfnBootstrapUtilsUrl",
+            "CloudWatchAgentUrl",
             "ToggleCfnInitUpdate",
             "ToggleNewInstances"
           ]
@@ -206,21 +288,83 @@
           "default": "Force New Instances"
         }
       }
+    },
+    "Version": "1.5.6"
+  },
+  "Outputs": {
+    "ScaleDownScheduledAction": {
+      "Condition": "UseScheduledAction",
+      "Description": "Scale Down Scheduled Action ID",
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-ScaleDownSched" } },
+      "Value": { "Ref": "ScaleDownScheduledAction" }
+    },
+    "ScaleUpScheduledAction": {
+      "Condition": "UseScheduledAction",
+      "Description": "Scale Up Scheduled Action ID",
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-ScaleUpSched" } },
+      "Value": { "Ref": "ScaleUpScheduledAction" }
+    },
+    "GitLabASGId": {
+      "Description": "Autoscaling Group ID",
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-AutoScalingGroupId" } },
+      "Value": { "Ref": "GitLabASG" }
+    },
+    "GitLabLCId": {
+      "Description": "Launch Configuration ID",
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-LaunchConfigId" } },
+      "Value": { "Ref": "GitLabLC" }
+    },
+    "GitLabLCLogGroupName": {
+      "Condition": "InstallCloudWatchAgent",
+      "Description": "Log Group Name",
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-LogGroupName" } },
+      "Value": { "Ref": "GitLabLCLogGroup" }
     }
   },
   "Parameters": {
     "AdminPubkeyURL": {
       "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Default": "",
       "Description": "URL the file containing the admin users' SSH public keys.",
       "Type": "String"
     },
     "AmiId": {
-      "AllowedPattern": "^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$",
       "Description": "ID of the AMI to launch",
+      "Type": "AWS::EC2::Image::Id"
+    },
+    "AppVolumeDevice": {
+      "AllowedValues": [
+        "true",
+        "false"
+      ],
+      "Default": "false",
+      "Description": "Decision whether to mount an extra EBS volume. Leave as default (\"false\") to launch without an extra application volume",
       "Type": "String"
     },
-    "AsgLoadBalancer": {
-      "Description": "Attachable-ID of ELB to attach scaling-group to.",
+    "AppVolumeMountPath": {
+      "AllowedPattern": "/.*",
+      "Default": "/opt/data",
+      "Description": "Filesystem path to mount the extra app volume. Ignored if \"AppVolumeDevice\" is blank",
+      "Type": "String"
+    },
+    "AppVolumeSize": {
+      "ConstraintDescription": "Must be between 1GB and 16384GB.",
+      "Default": "1",
+      "Description": "Size in GB of the EBS volume to create. Ignored if \"AppVolumeDevice\" is blank",
+      "MaxValue": "16384",
+      "MinValue": "1",
+      "Type": "Number"
+    },
+    "AppVolumeType": {
+      "AllowedValues": [
+        "gp2",
+        "io1",
+        "sc1",
+        "st1",
+        "standard"
+      ],
+      "Default": "gp2",
+      "Description": "Type of EBS volume to create. Ignored if \"AppVolumeDevice\" is blank",
       "Type": "String"
     },
     "BackupBucket": {
@@ -231,45 +375,28 @@
       "Description": "Folder in S3 Bucket to host backups of GitLab config-data",
       "Type": "String"
     },
-    "BackupVolumeDevice": {
-      "AllowedValues": [
-        "true",
-        "false"
-      ],
-      "Default": "false",
-      "Description": "Decision whether to mount an extra EBS volume. Leave as default (\"false\") to launch without an extra application volume",
-      "Type": "String"
-    },
-    "BackupVolumeMountPath": {
-      "AllowedPattern": "/.*",
-      "Default": "/opt/data",
-      "Description": "Filesystem path to mount the extra app volume. Ignored if \"BackupVolumeDevice\" is blank",
-      "Type": "String"
-    },
-    "BackupVolumeSize": {
-      "ConstraintDescription": "Must be between 1GB and 16384GB.",
-      "Default": "1",
-      "Description": "Size in GB of the EBS volume to create. Ignored if \"BackupVolumeDevice\" is blank",
-      "MaxValue": "16384",
-      "MinValue": "1",
-      "Type": "Number"
-    },
-    "BackupVolumeType": {
-      "AllowedValues": [
-        "gp2",
-        "io1",
-        "sc1",
-        "st1",
-        "standard"
-      ],
-      "Default": "gp2",
-      "Description": "Type of EBS volume to create. Ignored if \"BackupVolumeDevice\" is blank",
+    "CfnBootstrapUtilsUrl": {
+      "AllowedPattern": "^http[s]?://.*\\.tar\\.gz$",
+      "Default": "https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz",
+      "Description": "URL to aws-cfn-bootstrap-latest.tar.gz",
       "Type": "String"
     },
     "CfnEndpointUrl": {
       "AllowedPattern": "^$|^http[s]?://.*$",
       "Default": "https://cloudformation.us-east-1.amazonaws.com",
       "Description": "(Optional) URL to the CloudFormation Endpoint. e.g. https://cloudformation.us-east-1.amazonaws.com",
+      "Type": "String"
+    },
+    "CfnGetPipUrl": {
+      "AllowedPattern": "^http[s]?://.*\\.py$",
+      "Default": "https://bootstrap.pypa.io/2.6/get-pip.py",
+      "Description": "URL to get-pip.py",
+      "Type": "String"
+    },
+    "CloudWatchAgentUrl": {
+      "AllowedPattern": "^$|^s3://.*$",
+      "Default": "",
+      "Description": "(Optional) S3 URL to CloudWatch Agent installer. Example: s3://amazoncloudwatch-agent/linux/amd64/latest/AmazonCloudWatchAgent.zip",
       "Type": "String"
     },
     "ConfigBucketPath": {
@@ -282,37 +409,28 @@
       "Description": "Desired number of instances in the Autoscaling Group",
       "Type": "Number"
     },
-    "Domainname": {
-      "ConstraintDescription": "An alphanumeric string to complete the domain portion of the instance's FQDN.",
-      "Description": "Suffix for Jira's hostname and DNS record",
-      "Type": "String"
-    },
-    "EpelRepo": {
-      "AllowedPattern": "^[a-z][a-z0-9-]*$",
-      "ConstraintDescription": "An alphanumeric string that represents the EPEL yum repo's label.",
-      "Default": "epel",
-      "Description": "Name of network's EPEL repo.",
-      "Type": "String"
-    },
     "GitLabConfScript": {
+      "AllowedPattern": "^$|^http[s]://.*\\.sh$",
+      "Default": "",
       "Description": "URL of the script that localizes GitLab for running in the target environment",
-      "Type": "String",
-      "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$"
+      "Type": "String"
     },
     "GitLabPrepScript": {
+      "AllowedPattern": "^$|^http[s]://.*\\.sh$",
+      "Default": "",
       "Description": "URL of the script that preps the OS to host GitLab",
-      "Type": "String",
-      "AllowedPattern": "^http://.*\\.sh$|^https://.*\\.sh$"
+      "Type": "String"
     },
     "GitLabRpmName": {
+      "AllowedPattern": "^gitlab-.*$",
+      "Default": "gitlab-ce",
       "Description": "Name of GitLab RPM to install. Include release version if 'other-than-latest' is desired. Example values would be: gitlab-ce, gitlab-ce-X.Y.Z",
-      "Type": "String",
-      "AllowedPattern": "^gitlab-.*$"
+      "Type": "String"
     },
     "GitLabRpmSourceUri": {
       "AllowedPattern": "^http://.*$|^https://.*$",
-      "Description": "Url from which to download the Yum repository-definition for GitLab.",
       "Default": "https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/config_file.repo?os=el&dist=7",
+      "Description": "Url from which to download the Yum repository-definition for GitLab.",
       "Type": "String"
     },
     "GitRepoShareType": {
@@ -320,17 +438,12 @@
         "glusterfs",
         "nfs"
       ],
+      "Default": "nfs",
       "Description": "Type of network share hosting persisted git repository content.",
       "Type": "String"
     },
     "GitRepoShareUri": {
       "Description": "URI of network share hosting persisted git repository content.",
-      "Type": "String"
-    },
-    "Hostname": {
-      "ConstraintDescription": "An alphanumeric string to complete the hostname portion of the instance's FQDN.",
-      "Default": "gitbuild",
-      "Description": "Node-name for Jira's hostname and DNS record",
       "Type": "String"
     },
     "InstanceRoleName": {
@@ -345,15 +458,20 @@
     },
     "InstanceType": {
       "AllowedValues": [
-        "t2.micro",
         "t2.small",
         "t2.medium",
         "t2.large",
         "t2.xlarge",
-        "m5.large",
-        "m5.xlarge",
-        "m5.2xlarge",
-        "m5.4xlarge",
+        "t2.2xlarge",
+        "t3.small",
+        "t3.medium",
+        "t3.large",
+        "t3.xlarge",
+        "t3.2xlarge",
+        "c4.large",
+        "c4.xlarge",
+        "c4.2xlarge",
+        "c4.4xlarge",
         "c5.large",
         "c5.xlarge",
         "c5.2xlarge",
@@ -362,18 +480,23 @@
         "m4.xlarge",
         "m4.2xlarge",
         "m4.4xlarge",
-        "c4.large",
-        "c4.xlarge",
-        "c4.2xlarge",
-        "c4.4xlarge"
+        "m5.large",
+        "m5.xlarge",
+        "m5.2xlarge",
+        "m5.4xlarge"
       ],
-      "Default": "t2.micro",
+      "Default": "t2.small",
       "Description": "Amazon EC2 instance type",
       "Type": "String"
     },
     "KeyPairName": {
       "Description": "Public/private key pairs allow you to securely connect to your instance after it launches",
       "Type": "String"
+    },
+    "LoadBalancerNames": {
+      "Default": "",
+      "Description": "Comma-separated string of Classic ELB Names to associate with the Autoscaling Group; conflicts with TargetGroupArns",
+      "Type": "CommaDelimitedList"
     },
     "MaxCapacity": {
       "Default": "2",
@@ -412,17 +535,6 @@
       "Description": "Controls whether to run yum update during a stack update (on the initial instance launch, Watchmaker _always_ installs updates)",
       "Type": "String"
     },
-    "PipIndexFips": {
-      "AllowedPattern": "^http[s]?://.*$",
-      "Default": "https://pypi.org/simple",
-      "Description": "URL to the PyPi Index",
-      "Type": "String"
-    },
-    "PipRpm": {
-      "Default": "python2-pip",
-      "Description": "Name of preferred pip RPM.",
-      "Type": "String"
-    },
     "ProvisionUser": {
       "AllowedPattern": "[a-z0-9]{6,12}+",
       "ConstraintDescription": "Alphanumeric string between 6 and 12 characters.",
@@ -431,37 +543,56 @@
       "Type": "String"
     },
     "ProxyName": {
-      "Description": "FQDN of public-facing reverse-proxy.",
-      "Type": "String",
       "AllowedPattern": "^[a-z][a-z0-9.-]*[a-z]$",
-      "ConstraintDescription": "Alphanumeric string DNS FQDN representing the RDS end-point name."
+      "ConstraintDescription": "Alphanumeric string DNS FQDN representing the RDS end-point name.",
+      "Description": "FQDN of public-facing reverse-proxy.",
+      "Type": "String"
     },
-    "PyStache": {
-      "Default": "pystache",
-      "Description": "Name of preferred pystache RPM.",
+    "PypiIndexUrl": {
+      "AllowedPattern": "^http[s]?://.*$",
+      "Default": "https://pypi.org/simple",
+      "Description": "URL to the PyPi Index",
+      "Type": "String"
+    },
+    "RdsDbAdmin": {
+      "AllowedPattern": "^[a-z]*$",
+      "ConstraintDescription": "Alphanumeric string representing the RDS database-user name.",
+      "Description": "RDS database-user name.",
       "Type": "String"
     },
     "RdsDbHost": {
-      "Description": "RDS End-point Name (FQDN)",
-      "Type": "String",
       "AllowedPattern": "^[a-zA-Z0-9.-]*$",
-      "ConstraintDescription": "Alphanumeric string DNS FQDN representing the RDS end-point name."
+      "ConstraintDescription": "Alphanumeric string DNS FQDN representing the RDS end-point name.",
+      "Description": "RDS End-point Name (FQDN)",
+      "Type": "String"
     },
     "RdsDbInstance": {
-      "Description": "RDS database name.",
-      "Type": "String",
       "AllowedPattern": "^[a-z][a-zA-Z0-9_]*$",
-      "ConstraintDescription": "Alphanumeric string representing the RDS database instance."
-    },
-    "RdsDbAdmin": {
-      "Description": "RDS database-user name.",
-      "Type": "String",
-      "AllowedPattern": "^[a-z]*$",
-      "ConstraintDescription": "Alphanumeric string representing the RDS database-user name."
+      "ConstraintDescription": "Alphanumeric string representing the RDS database instance.",
+      "Description": "RDS database name.",
+      "Type": "String"
     },
     "RdsDbPasswd": {
       "Description": "RDS database-user login password.",
       "NoEcho": "True",
+      "Type": "String"
+    },
+    "RootVolumeSize": {
+      "ConstraintDescription": "Must be between 20GB and 16384GB.",
+      "Default": "20",
+      "Description": "Size in GB of the EBS volume to create. If smaller than AMI default, create operation will fail; If larger, root device-volume's partition size will be increased",
+      "MaxValue": "16384",
+      "MinValue": "20",
+      "Type": "Number"
+    },
+    "ScaleDownSchedule": {
+      "Default": "",
+      "Description": "(Optional) Scheduled Action in cron-format (UTC) to scale down to MinCapacity; ignored if empty or ScaleUpSchedule is unset (E.g. \"0 0 * * *\")",
+      "Type": "String"
+    },
+    "ScaleUpSchedule": {
+      "Default": "",
+      "Description": "(Optional) Scheduled Action in cron-format (UTC) to scale up to MaxCapacity; ignored if empty or ScaleDownSchedule is unset (E.g. \"0 10 * * Mon-Fri\")",
       "Type": "String"
     },
     "SecurityGroupIds": {
@@ -471,6 +602,11 @@
     "SubnetIds": {
       "Description": "List of subnets to associate to the Autoscaling Group",
       "Type": "List<AWS::EC2::Subnet::Id>"
+    },
+    "TargetGroupArns": {
+      "Default": "",
+      "Description": "Comma-separated string of Target Group ARNs to associate with the Autoscaling Group; conflicts with LoadBalancerNames",
+      "Type": "CommaDelimitedList"
     },
     "ToggleCfnInitUpdate": {
       "AllowedValues": [
@@ -490,10 +626,34 @@
       "Description": "A/B toggle that forces a change to instance userdata, triggering new instances via the Autoscale update policy",
       "Type": "String"
     },
-    "WatchmakerConfig": {
-      "AllowedPattern": "^$|^http[s]?://.*$",
+    "WatchmakerAdminGroups": {
       "Default": "",
-      "Description": "(Optional) URL to a Watchmaker config file",
+      "Description": "(Optional) Colon-separated list of domain groups that should have admin permissions on the EC2 instance",
+      "Type": "String"
+    },
+    "WatchmakerAdminUsers": {
+      "Default": "",
+      "Description": "(Optional) Colon-separated list of domain users that should have admin permissions on the EC2 instance",
+      "Type": "String"
+    },
+    "WatchmakerAvailable": {
+      "AllowedValues": [
+        "false",
+        "true"
+      ],
+      "Default": "true",
+      "Description": "Specify if Watchmaker is available (if \"false\" all other Watchmaker-related parms will be ignored).",
+      "Type": "String"
+    },
+    "WatchmakerComputerName": {
+      "Default": "",
+      "Description": "(Optional) Sets the hostname/computername within the OS",
+      "Type": "String"
+    },
+    "WatchmakerConfig": {
+      "AllowedPattern": "^$|^(http[s]?|s3|file)://.*$",
+      "Default": "",
+      "Description": "(Optional) Path to a Watchmaker config file.  The config file path can be a remote source (i.e. http[s]://, s3://) or local directory (i.e. file://)",
       "Type": "String"
     },
     "WatchmakerEnvironment": {
@@ -507,13 +667,10 @@
       "Description": "Environment in which the instance is being deployed",
       "Type": "String"
     },
-    "WatchmakerS3Source": {
-      "AllowedValues": [
-        "false",
-        "true"
-      ],
-      "Default": "false",
-      "Description": "Flag that tells watchmaker to use its instance role to retrieve watchmaker content from S3",
+    "WatchmakerOuPath": {
+      "AllowedPattern": "^$|^(OU=.+,)+(DC=.+)+$",
+      "Default": "",
+      "Description": "(Optional) DN of the OU to place the instance when joining a domain. If blank and \"WatchmakerEnvironment\" enforces a domain join, the instance will be placed in a default container. Leave blank if not joining a domain, or if \"WatchmakerEnvironment\" is \"false\"",
       "Type": "String"
     }
   },
@@ -527,14 +684,34 @@
       },
       "Properties": {
         "DesiredCapacity": { "Ref": "DesiredCapacity" },
+        "HealthCheckGracePeriod": {
+          "Fn::If": [
+            "UseElbHealthCheck",
+            3600,
+            { "Ref": "AWS::NoValue" }
+          ]
+        },
+        "HealthCheckType": {
+          "Fn::If": [
+            "UseElbHealthCheck",
+            "ELB",
+            "EC2"
+          ]
+        },
         "LaunchConfigurationName": { "Ref": "GitLabLC" },
-        "LoadBalancerNames": [ { "Ref": "AsgLoadBalancer" } ],
+        "LoadBalancerNames": {
+          "Fn::If": [
+            "UseLoadBalancerNames",
+            { "Ref": "LoadBalancerNames" },
+            { "Ref": "AWS::NoValue" }
+          ]
+        },
         "MaxSize": { "Ref": "MaxCapacity" },
         "MinSize": { "Ref": "MinCapacity" },
         "Tags": [
           {
             "Key": "Name",
-            "PropagateAtLaunch": "true",
+            "PropagateAtLaunch": true,
             "Value": {
               "Fn::Join": [
                 "",
@@ -545,15 +722,19 @@
             }
           }
         ],
+        "TargetGroupARNs": {
+          "Fn::If": [
+            "UseTargetGroupArns",
+            { "Ref": "TargetGroupArns" },
+            { "Ref": "AWS::NoValue" }
+          ]
+        },
         "VPCZoneIdentifier": { "Ref": "SubnetIds" }
       },
       "Type": "AWS::AutoScaling::AutoScalingGroup",
       "UpdatePolicy": {
-        "AutoScalingRollingUpdate": {
-          "MaxBatchSize": "2",
-          "MinInstancesInService": "1",
-          "PauseTime": "PT30M",
-          "WaitOnResourceSignals": "true"
+        "AutoScalingReplacingUpdate": {
+          "WillReplace": true
         }
       }
     },
@@ -599,18 +780,157 @@
               }
             }
           },
-          "app-install": {
+          "app-prep": {
+                      "commands": {
+              "10-config_svc-reload": {
+                "command": "systemctl daemon-reload"
+              },
+              "20-config_svc-reload": {
+                "command": "systemctl enable gitlab-config.service"
+              }
+            },
             "files": {
               "/etc/cfn/scripts/glprep.sh": {
                 "source": { "Ref": "GitLabConfScript" },
                 "group": "root",
                 "mode": "000700",
                 "owner": "root"
-              }
-            },
-            "commands": {
-              "10-app-install": {
-                "command": "bash -xe /etc/cfn/scripts/glprep.sh"
+              },
+              "/etc/systemd/system/gitlab-config.service": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[Unit]\n",
+                      "Description=Reconfigure GitLab to work on this host\n",
+                      "After=multi-user.target\n",
+                      "\n",
+                      "[Service]\n",
+                      "Type=oneshot\n",
+                      "ExecStart=/etc/cfn/scripts/glprep.sh\n",
+                      "\n",
+                      "[Install]\n",
+                      "WantedBy=multi-user.target\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000644",
+                "owner": "root"
+              },
+              "/etc/cfn/scripts/glprep-signal.sh": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash\n",
+                      "#\n",
+                      "# Small script to send a post-reboot CFn signal\n",
+                      "#\n",
+                      "###################################################\n",
+                      "PATH=${PATH}:/opt/aws/bin\n",
+                      "\n",
+                      "logger -p kern.info -t ${0} -s \"Sending signal '${1}' to CFn...\"\n",
+                      "\n",
+                      "cfn-signal -e ${1} --stack ",
+                      { "Ref": "AWS::StackName" },
+                      " --resource GitLabASG",
+                      {
+                        "Fn::If": [
+                          "AssignInstanceRole",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --role ",
+                                { "Ref": "InstanceRoleName" }
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      {
+                        "Fn::If": [
+                          "UseCfnUrl",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --url ",
+                                { "Ref": "CfnEndpointUrl" }
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      " --region ",
+                      { "Ref": "AWS::Region" },
+                      "\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000755",
+                "owner": "root"
+              },
+              "/etc/cron.d/GitLabBackup": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "SHELL=/bin/bash\n",
+                      "PATH=/sbin:/bin:/usr/sbin:/usr/bin\n",
+                      "MAILTO=\"\"\n",
+                      "\n",
+                      "0 23 * * * root /usr/local/bin/gitlab-backup.cron\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000644",
+                "owner": "root"
+              },
+              "/usr/local/bin/gitlab-backup.cron": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash\n",
+                      "#\n",
+                      "# Script to backup GitLab data to S3 bucket\n",
+                      "#################################################################\n",
+                      "PROGNAME=$(basename \"${0}\")\n",
+                      "LOGFACIL=\"user.err\"\n",
+                      "for VAR in $(cat /etc/cfn/GitLab.envs)\n",
+                      "do\n",
+                      "   export $VAR\n",
+                      "done\n",
+                      "BUCKET=\"${GITLAB_BACKUP_BUCKET:-UNDEF}\"\n",
+                      "FOLDER=\"${GITLAB_BACKUP_FOLDER:-UNDEF}\"\n",
+                      "REGION=\"${GITLAB_AWS_REGION:-UNDEF}\"\n",
+                      "DAYSUB=\"$(date '+%A')\"\n",
+                      "SRCDIR=/var/opt/gitlab/backups/\n",
+                      "            \n",
+                      "# Set up flexible logging\n",
+                      "function err_exit {\n",
+                      "   echo \"${1}\"\n",
+                      "   logger -t \"${PROGNAME}\" -p ${LOGFACIL} \"${1}\"\n",
+                      "   exit 1\n",
+                      "}\n",
+                      "\n",
+                      "# Create GitLab archive file\n",
+                      "printf \"Creating backup archive-file in s3://%s...\" \"${BUCKET}\"\n",
+                      "gitlab-rake gitlab:backup:create STRATEGY=copy DIRECTORY=\"${FOLDER}\" ",
+                        "CRON=1 &&  echo \"Success\" || ",
+                        "err_exit 'Failed creating backup archive-file'\n"
+                    ]
+                  ]
+                },
+                "group": "root",
+                "mode": "000700",
+                "owner": "root"
               }
             }
           },
@@ -618,21 +938,36 @@
             "launch": [
               "setup",
               "admkey-install",
-              "watchmaker-install",
-              "watchmaker-launch",
+              {
+                "Fn::If": [
+                  "InstallCloudWatchAgent",
+                  "cw-agent-install",
+                  { "Ref": "AWS::NoValue" }
+                ]
+              },
+              {
+                "Fn::If": [
+                  "UseWatchmaker",
+                  [
+                    "watchmaker-install",
+                    "watchmaker-launch",
+                    "watchmaker-defips"
+                  ],
+                  { "Ref": "AWS::NoValue" }
+                ]
+              },
               {
                 "Fn::If": [
                   "UseCfnAppInstaller",
                   [
                     "gitlab-tmplt-fetch",
                     "osprep",
-                    "app-install",
+                    "app-prep",
                     "enable-backups"
                   ],
                   { "Ref": "AWS::NoValue" }
                 ]
               },
-              "finalize",
               {
                 "Fn::If": [
                   "Reboot",
@@ -651,21 +986,29 @@
                   { "Ref": "AWS::NoValue" }
                 ]
               },
-              "watchmaker-install",
-              "watchmaker-update",
+              {
+                "Fn::If": [
+                  "UseWatchmaker",
+                  [
+                    "watchmaker-install",
+                    "watchmaker-launch",
+                    "watchmaker-defips"
+                  ],
+                  { "Ref": "AWS::NoValue" }
+                ]
+              },
               {
                 "Fn::If": [
                   "UseCfnAppInstaller",
                   [
                     "gitlab-tmplt-fetch",
                     "osprep",
-                    "app-install",
+                    "app-prep",
                     "enable-backups"
                   ],
                   { "Ref": "AWS::NoValue" }
                 ]
               },
-              "finalize",
               {
                 "Fn::If": [
                   "Reboot",
@@ -674,6 +1017,252 @@
                 ]
               }
             ]
+          },
+          "cw-agent-install": {
+            "commands": {
+              "01-get-cloudwatch-agent": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "install -Dbm 700 -o root -g root /dev/null /etc/cfn/scripts/AmazonCloudWatchAgent.zip &&",
+                      " aws s3 cp ",
+                      { "Ref": "CloudWatchAgentUrl" },
+                      " /etc/cfn/scripts/AmazonCloudWatchAgent.zip"
+                    ]
+                  ]
+                }
+              },
+              "02-extract-cloudwatch-agent": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "yum -y install unzip &&",
+                      "unzip /etc/cfn/scripts/AmazonCloudWatchAgent.zip -d /etc/cfn/scripts/aws-cw-agent"
+                    ]
+                  ]
+                }
+              },
+              "10-install-cloudwatch-agent": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      " bash -xe install.sh &&",
+                      " /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl",
+                      " -a fetch-config -m ec2 -c",
+                      " file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s"
+                    ]
+                  ]
+                },
+                "cwd": "/etc/cfn/scripts/aws-cw-agent"
+              }
+            },
+            "files": {
+              "/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "{",
+                      "  \"logs\": {\n",
+                      "  \"logs_collected\": {\n",
+                      "    \"files\": {\n",
+                      "    \"collect_list\": [\n",
+                      "      {\n",
+                      "      \"file_path\": \"/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log\",\n",
+                      "      \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabLCLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "      \"log_stream_name\": \"cloudwatch_agent_logs_{instance_id}\",\n",
+                      "      \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "      \"file_path\": \"/var/log/cfn-init.log\",\n",
+                      "      \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabLCLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "      \"log_stream_name\": \"cfn_init_logs_{instance_id}\",\n",
+                      "      \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "      \"file_path\": \"/var/log/messages\",\n",
+                      "      \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabLCLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "      \"log_stream_name\": \"messages_logs_{instance_id}\",\n",
+                      "      \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "      \"file_path\": \"/var/log/watchmaker/watchmaker.log\",\n",
+                      "      \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabLCLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "      \"log_stream_name\": \"watchmaker_logs_{instance_id}\",\n",
+                      "      \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "      \"file_path\": \"/var/log/watchmaker/salt_call.debug.log\",\n",
+                      "      \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabLCLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "      \"log_stream_name\": \"salt_call_debug_logs_{instance_id}\",\n",
+                      "      \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/nginx/error.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabLCLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"nginx_err_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/nginx/access.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabLCLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"nginx_access_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/nginx/gitlab_error.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabLCLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"nginx_gitlab_err_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/nginx/gitlab_access.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabLCLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"nginx_gitlab_access_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/gitlab-rails/grpc.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabLCLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"gitlab_grpc_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/gitlab-rails/production.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabLCLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"gitlab_production_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/gitlab-rails/application.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabLCLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"gitlab_application_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      },\n",
+                      "      {\n",
+                      "          \"file_path\": \"/var/log/gitlab/gitlab-rails/sidekiq.log\",\n",
+                      "          \"log_group_name\": \"",
+                      {
+                        "Fn::If": [
+                          "InstallCloudWatchAgent",
+                          { "Ref": "GitLabLCLogGroup" },
+                          { "Ref": "AWS::NoValue" }
+                        ]
+                      },
+                      "\",\n",
+                      "          \"log_stream_name\": \"gitlab_sidekiq_logs_{instance_id}\",\n",
+                      "          \"timestamp_format\": \"%H:%M:%S %y %b %-d\"\n",
+                      "      }\n",
+                      "    ]\n",
+                      "    }\n",
+                      "  },\n",
+                      "  \"log_stream_name\": \"default_logs_{instance_id}\"\n",
+                      "  }\n",
+                      "}\n"
+                    ]
+                  ]
+                }
+              }
+            }
           },
           "enable-backups": {
             "files": {
@@ -712,7 +1301,7 @@
                   "Fn::Join": [
                     "",
                     [
-                      "/opt/aws/bin/cfn-signal -e 0",
+                      "cfn-signal -e 0",
                       " --stack ",
                       { "Ref": "AWS::StackName" },
                       " --resource GitLabASG",
@@ -796,9 +1385,6 @@
           },
           "reboot": {
             "commands": {
-              "1-stop-gitlab": {
-                "command": "systemctl stop gitlab-runsvdir"
-              },
               "10-reboot": {
                 "command": "shutdown -r +1 &"
               }
@@ -869,7 +1455,7 @@
                       "[cfn-auto-reloader-hook]\n",
                       "triggers=post.update\n",
                       "path=Resources.GitLabLC.Metadata\n",
-                      "action=/opt/aws/bin/cfn-init -v -c update",
+                      "action=cfn-init -v -c update",
                       " --stack ",
                       { "Ref": "AWS::StackName" },
                       " --resource GitLabLC",
@@ -921,12 +1507,18 @@
                     [
                       "#!/bin/bash\n\n",
                       "PYPI_URL=",
-                      { "Ref": "PipIndexFips" },
+                      { "Ref": "PypiIndexUrl" },
                       "\n",
-                      "pip install --index-url=\"$PYPI_URL\" wheel==0.29.0\n",
+                      "curl --silent --show-error --retry 5 -L ",
+                      { "Ref": "CfnGetPipUrl" },
+                      " | python - --index-url=\"$PYPI_URL\" 'wheel<0.30.0;python_version<\"2.7\"' 'wheel;python_version>=\"2.7\"'",
+                      "\n",
                       "pip install",
                       " --index-url=\"$PYPI_URL\"",
-                      " --upgrade pip setuptools boto3 watchmaker\n\n"
+                      " --upgrade 'pip<10' 'setuptools<37;python_version<\"2.7\"' 'setuptools;python_version>=\"2.7\"' boto3\n",
+                      "pip install",
+                      " --index-url=\"$PYPI_URL\"",
+                      " --upgrade watchmaker\n\n"
                     ]
                   ]
                 },
@@ -999,15 +1591,17 @@
               }
             }
           },
+          "watchmaker-defips": {
+            "commands": {
+              "20-watchmaker-defips": {
+                "command": "/bin/salt-call --local ash.fips_disable"
+              }
+            }
+          },
           "watchmaker-install": {
             "commands": {
               "10-watchmaker-install": {
-                "command": "bash -xe /etc/cfn/scripts/watchmaker-install.sh",
-                "env": {
-                  "AWS_CA_BUNDLE": "/etc/pki/tls/certs/ca-bundle.crt",
-                  "AWS_DEFAULT_REGION": { "Ref": "AWS::Region" },
-                  "REQUESTS_CA_BUNDLE": "/etc/pki/tls/certs/ca-bundle.crt"
-                }
+                "command": "bash -xe /etc/cfn/scripts/watchmaker-install.sh"
               }
             }
           },
@@ -1020,6 +1614,7 @@
                     [
                       "watchmaker --log-level debug",
                       " --log-dir /var/log/watchmaker",
+                      " --exclude-states scap*scan",
                       " --no-reboot",
                       {
                         "Fn::If": [
@@ -1055,8 +1650,49 @@
                       },
                       {
                         "Fn::If": [
-                          "UseS3Source",
-                          " --s3-source",
+                          "UseOuPath",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --ou-path \"",
+                                { "Ref": "WatchmakerOuPath" },
+                                "\""
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      {
+                        "Fn::If": [
+                          "UseAdminGroups",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --admin-groups \"",
+                                { "Ref": "WatchmakerAdminGroups" },
+                                "\""
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      {
+                        "Fn::If": [
+                          "UseAdminUsers",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --admin-users \"",
+                                { "Ref": "WatchmakerAdminUsers" },
+                                "\""
+                              ]
+                            ]
+                          },
                           ""
                         ]
                       }
@@ -1076,6 +1712,7 @@
                       "watchmaker --log-level debug",
                       " --log-dir /var/log/watchmaker",
                       " --salt-states None",
+                      " --exclude-states scap*scan",
                       " --no-reboot",
                       {
                         "Fn::If": [
@@ -1111,8 +1748,49 @@
                       },
                       {
                         "Fn::If": [
-                          "UseS3Source",
-                          " --s3-source",
+                          "UseOuPath",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --ou-path \"",
+                                { "Ref": "WatchmakerOuPath" },
+                                "\""
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      {
+                        "Fn::If": [
+                          "UseAdminGroups",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --admin-groups \"",
+                                { "Ref": "WatchmakerAdminGroups" },
+                                "\""
+                              ]
+                            ]
+                          },
+                          ""
+                        ]
+                      },
+                      {
+                        "Fn::If": [
+                          "UseAdminUsers",
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                " --admin-users \"",
+                                { "Ref": "WatchmakerAdminUsers" },
+                                "\""
+                              ]
+                            ]
+                          },
                           ""
                         ]
                       }
@@ -1129,15 +1807,16 @@
         "AssociatePublicIpAddress": {
           "Fn::If": [
             "AssignPublicIp",
-            "true",
-            "false"
+            true,
+            false
           ]
         },
         "BlockDeviceMappings": [
           {
             "DeviceName": "/dev/sda1",
             "Ebs": {
-              "DeleteOnTermination": "true",
+              "DeleteOnTermination": true,
+              "VolumeSize": { "Ref": "RootVolumeSize" },
               "VolumeType": "gp2"
             }
           },
@@ -1165,9 +1844,9 @@
                   ]
                 },
                 "Ebs": {
-                  "DeleteOnTermination": "true",
-                  "VolumeSize": { "Ref": "BackupVolumeSize" },
-                  "VolumeType": { "Ref": "BackupVolumeType" }
+                  "DeleteOnTermination": true,
+                  "VolumeSize": { "Ref": "AppVolumeSize" },
+                  "VolumeType": { "Ref": "AppVolumeType" }
                 }
               },
               { "Ref": "AWS::NoValue" }
@@ -1216,13 +1895,13 @@
                 "  - default\n",
                 "\n",
                 "hostname: ",
-                { "Ref": "Hostname" },
+                  { "Ref": "WatchmakerComputerName" },
                 "\n",
-                "fqdn: ",
-                { "Ref": "Hostname" },
-                ".",
-                { "Ref": "Domainname" },
                 "\n",
+                "growpart:\n",
+                "  mode: auto\n",
+                "  devices: [ '/dev/xvda', '/dev/xvda2', '/dev/nvme0n1p2' ]\n",
+                "  ignore_growroot_disabled: false\n",
                 "\n",
                 {
                   "Fn::If": [
@@ -1232,7 +1911,7 @@
                         "",
                         [
                           "bootcmd:\n",
-                          "- cloud-init-per instance mkfs-appvolume mkfs -t ext4 ",
+                          "- cloud-init-per instance appvolume mkfs -t ext4 ",
                           {
                             "Fn::If": [
                               "NotGenFive",
@@ -1276,7 +1955,8 @@
                             ]
                           },
                           ", ",
-                          { "Ref": "BackupVolumeMountPath" },
+
+                          { "Ref": "AppVolumeMountPath" },
                           " ]\n"
                         ]
                       ]
@@ -1295,70 +1975,126 @@
                 "# CFN LaunchConfig Update Toggle: ",
                 { "Ref": "ToggleNewInstances" },
                 "\n\n",
-                "# Export cert bundle ENVs\n",
+                "# Extend any available LVM PVs\n",
+                "if [[ -x $( which pvs ) ]]\n",
+                "then\n",
+                "   LVMPVS=($(pvs --noheadings -o pv_name))\n",
+                "   for PV in \"${LVMPVS[@]}\"\n",
+                "   do\n",
+                "      pvresize ${PV}\n",
+                "   done\n",
+                "\n",
+                "   vgdisplay -s\n",
+                "   VGSFREE=$( vgs --noheadings --units=g --nosuffix -o vg_free | sed -e 's/^ *//' -e  's/\\..*$//' )\n",
+                "   ROOTVOL=\"$( awk '/\\s\\/\\s/{ print $1}' /etc/fstab )\"\n",
+                "   if [[ ${VGSFREE} -gt 0 ]] && [[ ${VGSFREE} -le 2 ]]\n",
+                "   then\n",
+                "      echo \"Attempting use free space in VG to expand ${ROOTVOL}\"\n",
+                "      lvextend -r -l +100%FREE \"${ROOTVOL}\"\n",
+                "   elif [[ ${VGSFREE} -gt 2 ]]\n",
+                "   then\n",
+                "      echo \"Attempting to expand ${ROOTVOL} by 2GiB\"\n",
+                "      lvextend -r -L +2G \"${ROOTVOL}\"\n",
+                "   else\n",
+                "      echo \"Cannot expand ${ROOTVOL}\"\n",
+                "   fi\n",
+                "fi\n",
+                "\n",
+                "# Export AWS ENVs\n",
+                "test -r /etc/aws/models/endpoints.json && export AWS_DATA_PATH=/etc/aws/models || true\n",
                 "export AWS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
-                "export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n\n",
-                "\n",
-                "# Define our error-handler\n",
-                "function err_exit {\n",
-                "   echo \"${1}\"\n",
-                "   logger -p kern.crit -t UserData \"${1}\"\n",
-                "   /opt/aws/bin/cfn-signal -e 1 --stack ",
-                    { "Ref": "AWS::StackName" },
-                    " --resource JenkinsMasterLC\n",
-                "   exit 1\n",
-                "}\n",
-                "\n",
-                "# Install RPMs needed by the cfn-tools.\n",
-                "yum --enablerepo=",
-                  { "Ref": "EpelRepo" },
-                  " install -y ",
-                  { "Ref": "PyStache" },
-                  " ",
-                  { "Ref": "PipRpm" },
-                  " || err_exit 'Could not install Cfn dependencies.'\n",
-                "\n",
-                "# Update cfn-bootstrapper hash method\n",
-                "PYVERS=$(python -c 'import sys;",
-                " version=sys.version_info[:2];",
-                " print(\"{0}.{1}\".format(*version))')\n",
-                "sed -i '/^[ \\t][ \\t]*self._etag/s/etag$/None/'",
-                " /usr/lib/python${PYVERS}/site-packages/cfnbootstrap",
-                "/util.py\n",
-                "\n",
-                "# Add pip to path\n",
-                "hash pip 2> /dev/null || ",
-                "PATH=\"${PATH}:/usr/local/bin\"",
+                "export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt\n",
+                "export AWS_DEFAULT_REGION=",
+                { "Ref": "AWS::Region" },
                 "\n\n",
-                "# Upgrade pip and setuptools\n",
-                "PYPI_URL=",
-                { "Ref": "PipIndexFips" },
+                "# Add local hostname binding\n",
+                "printf \"%s\\t%s %s\\n\" ",
+                "\"$( ip addr show eth0 | sed -n '/eth0$/p' | sed -e 's/^ *inet *//' -e 's#/.*$##' )\" ",
+                "\"$( hostname -f)\" \"$( hostname -s )\" >> /etc/hosts\n",
                 "\n",
-                "pip install",
-                " --index-url=\"$PYPI_URL\"",
-                " --upgrade pip setuptools\n\n",
-                "# Fixup cfn utils\n",
-                "INITDIR=$(find -L /opt/aws/apitools/cfn-init/init -name redhat ",
-                "2> /dev/null || echo /usr/init/redhat)\n",
-                "chmod 775 ${INITDIR}/cfn-hup\n",
-                "ln -f -s ${INITDIR}/cfn-hup /etc/rc.d/init.d/cfn-hup\n",
-                "chkconfig --add cfn-hup\n",
-                "chkconfig cfn-hup on\n",
-                "mkdir -p /opt/aws/bin\n",
-                "BINDIR=$(find -L /opt/aws/apitools/cfn-init -name bin ",
-                "2> /dev/null || echo /usr/bin)\n",
-                "for SCRIPT in cfn-elect-cmd-leader cfn-get-metadata cfn-hup ",
-                "cfn-init cfn-send-cmd-event cfn-send-cmd-result cfn-signal\n",
-                "do\n",
-                "  ln -s ${BINDIR}/${SCRIPT} /opt/aws/bin/${SCRIPT} 2> /dev/null || ",
-                "  echo Skipped symbolic link, /opt/aws/bin/${SCRIPT} already exists\n",
-                "done\n\n",
-                "# Add cfn-signal to path\n",
+                "\n\n",
+                {
+                  "Fn::If": [
+                    "UseWatchmaker",
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "# Get pip\n",
+                          "PYPI_URL=",
+                          { "Ref": "PypiIndexUrl" },
+                          "\n",
+                          "curl --silent --show-error --retry 5 -L ",
+                          { "Ref": "CfnGetPipUrl" },
+                          " | python - --index-url=\"$PYPI_URL\" 'wheel<0.30.0;python_version<\"2.7\"' 'wheel;python_version>=\"2.7\"'",
+                          "\n\n",
+                          "# Add pip to path\n",
+                          "hash pip 2> /dev/null || ",
+                          "PATH=\"${PATH}:/usr/local/bin\"",
+                          "\n\n",
+                          "# Upgrade pip and setuptools\n",
+                          "pip install",
+                          " --index-url=\"$PYPI_URL\"",
+                          " --upgrade 'pip<10' 'setuptools<37;python_version<\"2.7\"' 'setuptools;python_version>=\"2.7\"'",
+                          "\n\n",
+                          "# Fix python urllib3 warnings\n",
+                          "yum -y install gcc python-devel libffi-devel openssl-devel\n",
+                          "pip install",
+                          " --index-url=\"$PYPI_URL\"",
+                          " --upgrade 'pycparser<2.19;python_version<\"2.7\"' cffi\n",
+                          "pip install",
+                          " --index-url=\"$PYPI_URL\"",
+                          " --upgrade 'pycparser<2.19;python_version<\"2.7\"' 'cryptography<2.2;python_version<\"2.7\"' 'cryptography;python_version>=\"2.7\"'",
+                          "\n\n",
+                          "if [[ $(rpm --quiet -q aws-cfn-bootstrap || pip show --quiet aws-cfn-bootstrap)$? -ne 0 ]]\n",
+                          "then\n",
+                          "  # Get cfn utils\n",
+                          "  pip install",
+                          " --index-url=\"$PYPI_URL\"",
+                          " --upgrade --upgrade-strategy only-if-needed ",
+                          { "Ref": "CfnBootstrapUtilsUrl" },
+                          "\n\n",
+                          "  # Fixup cfn utils\n",
+                          "  INITDIR=$(find -L /opt/aws/apitools/cfn-init/init -name redhat",
+                          " 2> /dev/null || echo /usr/init/redhat)\n",
+                          "  chmod 775 ${INITDIR}/cfn-hup\n",
+                          "  ln -f -s ${INITDIR}/cfn-hup /etc/rc.d/init.d/cfn-hup\n",
+                          "  chkconfig --add cfn-hup\n",
+                          "  chkconfig cfn-hup on\n",
+                          "  mkdir -p /opt/aws/bin\n",
+                          "  BINDIR=$(find -L /opt/aws/apitools/cfn-init -name bin",
+                          " 2> /dev/null || echo /usr/bin)\n",
+                          "  for SCRIPT in cfn-elect-cmd-leader cfn-get-metadata cfn-hup",
+                          " cfn-init cfn-send-cmd-event cfn-send-cmd-result cfn-signal\n",
+                          "  do\n",
+                          "  ln -s ${BINDIR}/${SCRIPT} /opt/aws/bin/${SCRIPT} 2> /dev/null || ",
+                          "  echo Skipped symbolic link, /opt/aws/bin/${SCRIPT} already exists\n",
+                          "  done\n\n",
+                          "fi\n\n",
+                          "# Remove gcc now that it is no longer needed\n",
+                          "yum -y remove gcc --setopt=clean_requirements_on_remove=1\n\n"
+                        ]
+                      ]
+                    },
+                    { "Ref": "AWS::NoValue"}
+                  ]
+                },
+                "# Add cfn utils to path\n",
                 "hash cfn-signal 2> /dev/null || ",
                 "PATH=\"${PATH}:/usr/local/bin:/opt/aws/bin\"",
                 "\n\n",
+                "# Update cfn-bootstrapper hash method\n",
+                "printf 'Updating CFn hash-check method... '\n",
+                "PYVERS=$(python -c 'import sys;",
+                  " version=sys.version_info[:2];",
+                  " print(\"{0}.{1}\".format(*version))')\n",
+                "sed -i '/^[ \\t][ \\t]*self._etag/s/etag$/None/'",
+                  " /usr/lib/python${PYVERS}/site-packages/cfnbootstrap",
+                  "/util.py && echo 'Success' || ",
+                  "err_exit 'Failed updating CFn hash-method'\n",
+                "\n",
                 "# Execute cfn-init\n",
-                "/opt/aws/bin/cfn-init -v -c launch",
+                "cfn-init -v -c launch",
                 " --stack ",
                 { "Ref": "AWS::StackName" },
                 " --resource GitLabLC",
@@ -1396,7 +2132,7 @@
                 { "Ref": "AWS::Region" },
                 " ||",
                 " ( echo 'ERROR: cfn-init failed! Aborting!';",
-                " /opt/aws/bin/cfn-signal -e 1",
+                " cfn-signal -e 1",
                 "  --stack ",
                 { "Ref": "AWS::StackName" },
                 "  --resource GitLabASG",
@@ -1442,6 +2178,43 @@
         }
       },
       "Type": "AWS::AutoScaling::LaunchConfiguration"
+    },
+    "ScaleDownScheduledAction": {
+      "Condition": "UseScheduledAction",
+      "Properties": {
+        "AutoScalingGroupName": { "Ref": "GitLabASG" },
+        "DesiredCapacity": { "Ref": "MinCapacity" },
+        "MaxSize": { "Ref": "MinCapacity" },
+        "MinSize": { "Ref": "MinCapacity" },
+        "Recurrence": { "Ref": "ScaleDownSchedule" }
+      },
+      "Type": "AWS::AutoScaling::ScheduledAction"
+    },
+    "ScaleUpScheduledAction": {
+      "Condition": "UseScheduledAction",
+      "Properties": {
+        "AutoScalingGroupName": { "Ref": "GitLabASG" },
+        "DesiredCapacity": { "Ref": "DesiredCapacity" },
+        "MaxSize": { "Ref": "MaxCapacity" },
+        "MinSize": { "Ref": "MinCapacity" },
+        "Recurrence": { "Ref": "ScaleUpSchedule" }
+      },
+      "Type": "AWS::AutoScaling::ScheduledAction"
+    },
+    "GitLabLCLogGroup": {
+      "Condition": "InstallCloudWatchAgent",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/ec2/lx/",
+              { "Ref": "AWS::StackName" }
+            ]
+          ]
+        }
+      },
+      "Type": "AWS::Logs::LogGroup"
     }
   }
 }

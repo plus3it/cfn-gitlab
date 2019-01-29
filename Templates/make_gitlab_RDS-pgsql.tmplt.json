@@ -1,0 +1,333 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Conditions": {
+    "SetIops": {
+      "Fn::Equals": [ { "Ref": "DbStorageType" }, "io1" ]
+    },
+    "SetNodeName": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "DbNodeName" }, "" ] }
+      ]
+    },
+    "UseDbSnapshot": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "DbSnapshotId" }, "" ] }
+      ]
+    },
+    "UsePgSqlMinor": {
+      "Fn::Equals": [
+        {
+          "Fn::Select": [
+            "0",
+            {
+              "Fn::Split": [
+                ".",
+                { "Ref": "PgsqlVersion" }
+              ]
+            }
+          ]
+        },
+        "9"
+      ]
+    }
+  },
+  "Description": "This template deploys a PGSQL database to host GitLab configuration data.",
+  "Mappings": {},
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Label": {
+            "default": "RDS Configuration"
+          },
+          "Parameters": [
+            "PgsqlVersion",
+            "DbInstanceType",
+            "DbIsMultiAz",
+            "DbDataSize",
+            "DbStorageType",
+            "DbStorageIops",
+            "DbSnapshotId"
+          ]
+        },
+        {
+          "Label": {
+            "default": "RDS Connection Information"
+          },
+          "Parameters": [
+            "DbNodeName",
+            "DbInstanceName",
+            "DbAdminName",
+            "DbAdminPass"
+          ]
+        },
+        {
+          "Label": {
+            "default": "RDS Network Configuration"
+          },
+          "Parameters": [
+            "DbSubnets",
+            "DbSecurityGroup"
+          ]
+        }
+      ]
+    }
+  },
+  "Outputs": {
+    "RdsDbInstanceName": {
+      "Description": "RDS DB's instance-name.",
+      "Value": { "Ref": "DbInstanceName" }
+    },
+    "RdsDbUserName": {
+      "Description": "RDS DB's root user name.",
+      "Value": { "Ref": "DbAdminName" }
+    },
+    "RdsDbUserPass": {
+      "Description": "RDS DB's root user's password.",
+      "Value": { "Ref": "DbAdminPass" }
+    },
+    "RdsEndpointAddress": {
+      "Description": "RDS DB's endpoint FQDN.",
+      "Value": {
+        "Fn::GetAtt": [
+          "RDSdb",
+          "Endpoint.Address"
+        ]
+      }
+    }
+  },
+  "Parameters": {
+    "DbAdminName": {
+      "Description": "Name of the GitLab master database-user.",
+      "Type": "String"
+    },
+    "DbAdminPass": {
+      "Description": "Password of the GitLab master database-user.",
+      "NoEcho": "true",
+      "Type": "String"
+    },
+    "DbDataSize": {
+      "ConstraintDescription": "Must be between 5GB and 16384GB.",
+      "Default": "5",
+      "Description": "Size in GiB of the RDS table-space to create.",
+      "MaxValue": "16384",
+      "MinValue": "5",
+      "Type": "Number"
+    },
+    "DbInstanceName": {
+      "Description": "Instance-name of the GitLab database (Ignored if \"DbSnapshotId\" is non-null).",
+      "Type": "String"
+    },
+    "DbInstanceType": {
+      "AllowedValues": [
+        "db.t2.micro",
+        "db.t2.small",
+        "db.t2.medium",
+        "db.t2.large",
+        "db.m3.medium",
+        "db.m3.large",
+        "db.m3.xlarge",
+        "db.m3.2xlarge",
+        "db.m4.large",
+        "db.m4.xlarge",
+        "db.m4.2xlarge",
+        "db.m4.4xlarge",
+        "db.r3.large",
+        "db.r3.xlarge",
+        "db.r3.2xlarge",
+        "db.r3.4xlarge",
+        "db.r4.large",
+        "db.r4.xlarge",
+        "db.r4.2xlarge",
+        "db.r4.4xlarge"
+      ],
+      "Default": "db.t2.small",
+      "Description": "Amazon RDS instance type",
+      "Type": "String"
+    },
+    "DbIsMultiAz": {
+      "AllowedValues": [
+        "false",
+        "true"
+      ],
+      "Default": "false",
+      "Description": "Select whether to create a multi-AZ RDS deployment.",
+      "Type": "String"
+    },
+    "DbNodeName": {
+      "Description": "NodeName of the GitLab database (Optional: random one will be created if left blank).",
+      "Type": "String"
+    },
+    "DbSecurityGroup": {
+      "Description": "List of security groups to apply to the RDS database.",
+      "Type": "List<AWS::EC2::SecurityGroup::Id>"
+    },
+    "DbSnapshotId": {
+      "AllowedPattern": "^$|^arn:.*$",
+      "Default": "",
+      "Description": "(Optional) RDS snapshot-ARN to clone new database from.",
+      "Type": "String"
+    },
+    "DbStorageIops": {
+      "Default": "1000",
+      "Description": "Provisioned-IOPS of storage to used to host DB-data.",
+      "MaxValue": "30000",
+      "MinValue": "1000",
+      "Type": "Number"
+    },
+    "DbStorageType": {
+      "AllowedValues": [
+        "standard",
+        "gp2",
+        "io1"
+      ],
+      "Default": "gp2",
+      "Description": "Type of storage used to host DB-data.",
+      "Type": "String"
+    },
+    "DbSubnets": {
+      "Description": "Select at least two subnets, each in different Availability Zones",
+      "Type": "List<AWS::EC2::Subnet::Id>"
+    },
+    "PgsqlVersion": {
+      "AllowedValues": [
+        "10.4",
+        "10.3",
+        "10.1",
+        "9.6.10",
+        "9.6.9",
+        "9.6.8",
+        "9.6.6",
+        "9.6.5",
+        "9.6.3",
+        "9.6.2",
+        "9.6.1",
+        "9.5.10",
+        "9.5.9",
+        "9.5.7",
+        "9.5.6",
+        "9.5.4",
+        "9.5.2"
+      ],
+      "Default": "9.6.10",
+      "Description": "The X.Y.Z version of the PostGreSQL database to deploy.",
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "RDSdb": {
+      "Metadata": {},
+      "Properties": {
+        "AllocatedStorage": { "Ref": "DbDataSize" },
+        "AllowMajorVersionUpgrade": true,
+        "AutoMinorVersionUpgrade": true,
+        "BackupRetentionPeriod": "7",
+        "DBInstanceClass": { "Ref": "DbInstanceType" },
+        "DBInstanceIdentifier": {
+          "Fn::If": [
+            "SetNodeName",
+            { "Ref": "DbNodeName" },
+            { "Ref": "AWS::NoValue" }
+          ]
+        },
+        "DBName": {
+          "Fn::If": [
+            "UseDbSnapshot",
+            { "Ref": "AWS::NoValue" },
+            { "Ref": "DbInstanceName" }
+          ]
+        },
+        "DBParameterGroupName": { "Ref": "RDSdbParmGrp" },
+        "DBSnapshotIdentifier": {
+          "Fn::If": [
+            "UseDbSnapshot",
+            { "Ref": "DbSnapshotId" },
+            { "Ref": "AWS::NoValue" }
+          ]
+        },
+        "DBSubnetGroupName": { "Ref": "RDSdbSubnetGroup" },
+        "Engine": "postgres",
+        "EngineVersion": { "Ref": "PgsqlVersion" },
+        "Iops": {
+          "Fn::If": [
+            "SetIops",
+            { "Ref": "DbStorageIops" },
+            { "Ref": "AWS::NoValue" }
+          ]
+        },
+        "MasterUserPassword": {
+          "Fn::If": [
+            "UseDbSnapshot",
+            { "Ref": "AWS::NoValue" },
+            { "Ref": "DbAdminPass" }
+          ]
+        },
+        "MasterUsername": { "Ref": "DbAdminName" },
+        "MultiAZ": { "Ref": "DbIsMultiAz" },
+        "PreferredBackupWindow": "23:30-00:00",
+        "PreferredMaintenanceWindow": "sun:00:30-sun:01:00",
+        "PubliclyAccessible": false,
+        "StorageType": { "Ref": "DbStorageType" },
+        "VPCSecurityGroups": { "Ref": "DbSecurityGroup" }
+      },
+      "Type": "AWS::RDS::DBInstance"
+    },
+    "RDSdbParmGrp": {
+      "Properties": {
+        "Description": "Parameters used to modify database behavior and performance characteristics",
+        "Family": {
+          "Fn::Join": [
+            "",
+            [
+              "postgres",
+              {
+                "Fn::Select": [
+                  "0",
+                  {
+                    "Fn::Split": [
+                      ".",
+                      { "Ref": "PgsqlVersion" }
+                    ]
+                  }
+                ]
+              },
+              {
+                "Fn::If": [
+                  "UsePgSqlMinor",
+                  {
+                    "Fn::Join": [
+                      "",
+                      [
+                        ".",
+                        {
+                          "Fn::Select": [
+                            "1",
+                            {
+                              "Fn::Split": [
+                                ".",
+                                { "Ref": "PgsqlVersion" }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    ]
+                  },
+                  { "Ref": "AWS::NoValue" }
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      "Type": "AWS::RDS::DBParameterGroup"
+    },
+    "RDSdbSubnetGroup": {
+      "Properties": {
+        "DBSubnetGroupDescription": "Subnets available for the RDS DB Instance",
+        "SubnetIds": { "Ref": "DbSubnets" }
+      },
+      "Type": "AWS::RDS::DBSubnetGroup"
+    }
+  }
+}

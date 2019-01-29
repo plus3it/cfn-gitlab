@@ -4,6 +4,7 @@
 #
 #################################################################
 PROGNAME=$(basename "${0}")
+export PATH=${PATH}:/opt/aws/bin
 # Read in template envs we might want to use
 while read -r GLENV
 do
@@ -25,8 +26,6 @@ GITLAB_AD_BINDUSER="${GITLAB_AD_BINDUSER:-UNDEF}"
 GITLAB_AD_BINDPASS="${GITLAB_AD_BINDPASS:-UNDEF}"
 GITLAB_AD_SRCHBASE="${GITLAB_AD_SRCHBASE:-UNDEF}"
 GITLAB_REGION="${GITLAB_AWS_REGION:-UNDEF}"
-SHAREURI=${GITLAB_SHARE_URI:-UNDEF}
-SHARETYPE=${GITLAB_SHARE_TYPE:-UNDEV}
 UPLOADDIR="/var/opt/gitlab/git-data/uploads"
 UPLOADLNK="/var/opt/gitlab/gitlab-rails/uploads"
 
@@ -34,43 +33,10 @@ UPLOADLNK="/var/opt/gitlab/gitlab-rails/uploads"
 # Log errors and exit
 #####
 function err_exit {
-   echo "${1}" > /dev/stderr
-   logger -t "${PROGNAME}" -p kern.crit "${1}"
+   logger -s -t "${PROGNAME}" -p kern.crit "${1}"
+   /etc/cfn/scripts/glprep-signal.sh 1
    exit 1
 }
-
-#
-# Ensure persistent data storage is valid
-function ValidShare {
-   SHARESRVR="${SHAREURI/\:*/}"
-   SHAREPATH=${SHAREURI/${SHARESRVR}\:\//}
-
-   echo "Attempting to validate share-path"
-   printf "\t- Attempting to mount %s... " "${SHARESRVR}"
-   if [[ ${SHARETYPE} = glusterfs ]]
-   then
-      mount -t "${SHARETYPE}" "${SHARESRVR}":/"${SHAREPATH}" /mnt && echo "Success" ||
-        err_exit "Failed to mount ${SHARESRVR}"
-   elif [[ ${SHARETYPE} = nfs ]]
-   then
-      mount -t "${SHARETYPE}" "${SHARESRVR}":/ /mnt && echo "Success" ||
-        err_exit "Failed to mount ${SHARESRVR}"
-      printf "\t- Looking for %s in %s... " "${SHAREPATH}" "${SHARESRVR}"
-      if [[ -d /mnt/${SHAREPATH} ]]
-      then
-         echo "Success" 
-      else
-         echo "Not found."
-         printf "Attempting to create %s in %s... " "${SHAREPATH}" "${SHARESRVR}"
-         mkdir /mnt/"${SHAREPATH}" && echo "Success" ||
-           err_exit "Failed to create ${SHAREPATH} in ${SHARESRVR}"
-      fi
-   fi
-
-   printf "Cleaning up... "
-   umount /mnt && echo "Success" || echo "Failed"
-}
-
 
 #
 # Ensure we've passed an necessary ENVs
@@ -81,6 +47,12 @@ if [[ ${GITLAB_EXTERNURL} = UNDEF ]] ||
 then
    err_exit "Required env var(s) not defined. Aborting!"
 fi
+
+# Dear SEL: relax for a minute!
+setenforce 0 || \
+   err_exit "Failed to temp-disable SELinux"
+echo "Temp-disabled SELinux"
+
 
 
 #
@@ -129,35 +101,6 @@ gitlab-ctl reconfigure || \
     err_exit "Localization did not succeed. Aborting."
 echo "Localization successful."
 
-#
-# Ensure that share-persisted repositories are present
-#####
-
-ValidShare
-
-echo "Configure NAS-based persisted data..." 
-case ${SHARETYPE} in
-   UNDEF)
-      echo "No network share declared for persisting git repository data"
-      ;;
-   nfs)
-      echo "Adding NFS-hosted, persisted git repository data to fstab"
-      (
-       printf "%s\t/var/opt/gitlab/git-data\tnfs4\trw,relatime,vers=4.1," "${SHAREURI}" ;
-       printf "rsize=1048576,wsize=1048576,namlen=255,hard,";
-       printf "proto=tcp,timeo=600,retrans=2\t0 0\n"
-      ) >> /etc/fstab || err_exit "Failed to add NFS volume to fstab"
-      mount /var/opt/gitlab/git-data || err_exit "Failed to mount GitLab repository dir"
-      ;;
-   glusterfs)
-      echo "Adding Gluster-hosted, persisted git repository data to fstab"
-      (
-       printf "%s\t/var/opt/gitlab/git-data\tglusterfs\t" "${SHAREURI}" ;
-       printf "defaults\t0 0\n"
-      ) >> /etc/fstab || err_exit "Failed to add Gluster volume to fstab"
-      mount /var/opt/gitlab/git-data || err_exit "Failed to mount GitLab repository dir"
-      ;;
-esac
 
 #
 # Ensure uploads directory is a symlink
@@ -217,3 +160,14 @@ echo "Restart successful."
 #####
 echo "yes" | gitlab-rake gitlab:shell:setup && echo "Success!" || \
   echo 'Failure during restoration of git-users'\'' SSH pubkeys (new install?)'
+
+# Dear SEL: go back to being a PitA
+setenforce 1 || \
+   err_exit "Failed to reactivate SELinux"
+echo "Re-enabled SELinux"
+
+# Really only need this to run once...
+systemctl disable gitlab-config.service
+
+# Send success to CFn
+/etc/cfn/scripts/glprep-signal.sh 0

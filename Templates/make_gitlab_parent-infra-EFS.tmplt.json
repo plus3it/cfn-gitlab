@@ -1,0 +1,397 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "This template coordinates the running of the GitLab SecurityGroup, S3, RDS, IAM, EFS, EC2 and ELB templates.",
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Label": {
+            "default": "Child Templates"
+          },
+          "Parameters": [
+            "SecurityGroupTemplate",
+            "GitlabBucketTemplate",
+            "GitlabElbTemplate",
+            "GitlabEfsTemplate",
+            "GitlabIamTemplate",
+            "GitlabRdsTemplate"
+          ]
+        },
+        {
+          "Label": {
+            "default": "RDS Parameters"
+          },
+          "Parameters": [
+            "DbInstanceType",
+            "DbDataSize",
+            "PgsqlVersion",
+            "DbNodeName",
+            "DbInstanceName",
+            "DbAdminName",
+            "DbAdminPass"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Proxy (ELB)"
+          },
+          "Parameters": [
+            "GitlabElbSubnets",
+            "GitLabServicePort",
+            "GitLabListenerCert",
+            "GitLabPassesSsh"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Miscellaneous"
+          },
+          "Parameters": [
+            "TargetVPC",
+            "HaSvcSubnets",
+            "GitlabBucket",
+            "RolePrefix"
+          ]
+        }
+      ]
+    }
+  },
+  "Outputs": {
+    "GitLabBucketName": {
+      "Description": "The GitLab EC2 instance's bucket-name.",
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-BucketName" } },
+      "Value": { "Fn::GetAtt": [ "S3Res", "Outputs.BucketName" ] }
+    },
+    "GitLabElbFqdn": {
+      "Description": "GitLab front-end's IP address",
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-ElbDnsName" } },
+      "Value": { "Fn::GetAtt": [ "ElbRes", "Outputs.GitLabElbFqdn" ] }
+    },
+    "RdsFqdn": {
+      "Description": "FQDN of Stack's RDS instance.",
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-RdsFqdn" } },
+      "Value": { "Fn::GetAtt": [ "RdsRes", "Outputs.RdsEndpointAddress" ] }
+    }
+  },
+  "Parameters": {
+    "BucketInventoryTracking": {
+      "AllowedValues": [
+        "true",
+        "false"
+      ],
+      "Default": "false",
+      "Description": "(Optional) Whether to enable generic bucket inventory-tracking. Requires setting of the 'BackupReportingBucket' parameter.",
+      "Type": "String"
+    },
+    "CertHostingService": {
+      "AllowedValues": [
+        "ACM",
+        "IAM"
+      ],
+      "Default": "ACM",
+      "Description": "Select AWS service that is hosting the SSL certificate.",
+      "Type": "String"
+    },
+    "CloudwatchBucketName": {
+      "Description": "Name of the S3 Bucket hosting the CloudWatch agent archive files",
+      "Type": "String"
+    },
+    "ConfigBucketPath": {
+      "Default": "",
+      "Description": "S3 bucket-path to GitLab configuration template-file.",
+      "Type": "String"
+    },
+    "DbAdminName": {
+      "Description": "Name of the GitLab master database-user.",
+      "Type": "String"
+    },
+    "DbAdminPass": {
+      "Description": "Password of the GitLab master database-user.",
+      "NoEcho": "True",
+      "Type": "String"
+    },
+    "DbDataSize": {
+      "ConstraintDescription": "Must be between 5GB and 16384GB.",
+      "Default": "5",
+      "Description": "Size in GiB of the RDS table-space to create.",
+      "MaxValue": "16384",
+      "MinValue": "5",
+      "Type": "Number"
+    },
+    "DbInstanceName": {
+      "Description": "Instance-name of the GitLab database.",
+      "Type": "String"
+    },
+    "DbInstanceType": {
+      "AllowedValues": [
+        "db.t2.micro",
+        "db.t2.small",
+        "db.t2.medium",
+        "db.t2.large",
+        "db.m3.medium",
+        "db.m3.large",
+        "db.m3.xlarge",
+        "db.m3.2xlarge",
+        "db.m4.large",
+        "db.m4.xlarge",
+        "db.m4.2xlarge",
+        "db.m4.4xlarge",
+        "db.r3.large",
+        "db.r3.xlarge",
+        "db.r3.2xlarge",
+        "db.r3.4xlarge",
+        "db.r4.large",
+        "db.r4.xlarge",
+        "db.r4.2xlarge",
+        "db.r4.4xlarge"
+      ],
+      "Default": "db.t2.small",
+      "Description": "Amazon RDS instance type",
+      "Type": "String"
+    },
+    "DbNodeName": {
+      "Description": "NodeName of the GitLab database.",
+      "Type": "String"
+    },
+    "FinalExpirationDays": {
+      "ConstraintDescription": "Must be an integer value greater than '0'.",
+      "Default": "30",
+      "Description": "Number of days to retain objects before aging them out of the bucket",
+      "Type": "Number"
+    },
+    "GitLabListenerCert": {
+      "Default": "",
+      "Description": "Name/ID of the ACM-managed SSL Certificate to protect public listener.",
+      "Type": "String"
+    },
+    "GitLabPassesSsh": {
+      "AllowedValues": [
+        "false",
+        "true"
+      ],
+      "Default": "true",
+      "Description": "Whether to allow SSH passthrough to GitLab master.",
+      "Type": "String"
+    },
+    "GitLabServicePort": {
+      "Default": "80",
+      "Description": "TCP Port number that the GitLab host listens to.",
+      "MaxValue": "65535",
+      "Type": "Number"
+    },
+    "GitlabBucket": {
+      "AllowedPattern": "^[a-zA-Z][a-zA-Z0-9-]*[a-zA-Z0-9]*$|^$",
+      "Description": "S3 Bucket to host GitLab files",
+      "Type": "String"
+    },
+    "GitlabBucketTemplate": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the gitlab-bucket.",
+      "Type": "String"
+    },
+    "GitlabEfsTemplate": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the GitLab EFS service.",
+      "Type": "String"
+    },
+    "GitlabElbSubnets": {
+      "Description": "Select three subnets - each from different Availability Zones.",
+      "Type": "List<AWS::EC2::Subnet::Id>"
+    },
+    "GitlabElbTemplate": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the GitLab service's ELB",
+      "Type": "String"
+    },
+    "GitlabIamTemplate": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the GitLab S3 bucket(s) IAM roles.",
+      "Type": "String"
+    },
+    "GitlabRdsTemplate": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the GitLab RDS service.",
+      "Type": "String"
+    },
+    "HaSvcSubnets": {
+      "Description": "Select three subnets - each from different Availability Zones.",
+      "Type": "List<AWS::EC2::Subnet::Id>"
+    },
+    "PgsqlVersion": {
+      "AllowedValues": [
+        "10.4",
+        "10.3",
+        "10.1",
+        "9.6.10",
+        "9.6.9",
+        "9.6.8",
+        "9.6.6",
+        "9.6.5",
+        "9.6.3",
+        "9.6.2",
+        "9.6.1",
+        "9.5.10",
+        "9.5.9",
+        "9.5.7",
+        "9.5.6",
+        "9.5.4",
+        "9.5.2"
+      ],
+      "Default": "9.6.10",
+      "Description": "The X.Y.Z version of the PostGreSQL database to deploy.",
+      "Type": "String"
+    },
+    "ReportingBucket": {
+      "AllowedPattern": "^arn:.*$|^$",
+      "ConstraintDescription": "String must start with 'arn:' (or be left wholly blank).",
+      "Default": "",
+      "Description": "(Optional) Destination for storing analytics data. Must be provided in ARN format.",
+      "Type": "String"
+    },
+    "RetainIncompleteDays": {
+      "ConstraintDescription": "Must be an integer value between '0' and '30'",
+      "Default": "3",
+      "Description": "Number of days to retain objects that were not completely uploaded.",
+      "MaxValue": "30",
+      "MinValue": "0",
+      "Type": "Number"
+    },
+    "RolePrefix": {
+      "Description": "Prefix to apply to IAM role to make things a bit prettier (optional).",
+      "Type": "String"
+    },
+    "SecurityGroupTemplate": {
+      "AllowedPattern": "^$|^http://.*$|^https://.*$",
+      "Description": "URL to the child-template for creating the GitLab SecurityGroups.",
+      "Type": "String"
+    },
+    "TargetVPC": {
+      "AllowedPattern": "^vpc-[0-9a-f]*$",
+      "Description": "ID of the VPC to deploy GitLab components into.",
+      "Type": "AWS::EC2::VPC::Id"
+    },
+    "TierToGlacierDays": {
+      "ConstraintDescription": "Must be an integer value between '1' and '30'",
+      "Default": "5",
+      "Description": "Number of days to retain objects in standard storage tier.",
+      "MaxValue": "30",
+      "MinValue": "1",
+      "Type": "Number"
+    }
+  },
+  "Resources": {
+    "EfsRes": {
+      "Properties": {
+        "Parameters": {
+          "EfsSg": {
+            "Fn::GetAtt": [
+              "SgRes",
+              "Outputs.NasSg"
+            ]
+          },
+          "EfsSubnet": {
+            "Fn::Join": [
+              ",",
+              { "Ref": "HaSvcSubnets" }
+            ]
+          }
+        },
+        "TemplateURL": { "Ref": "GitlabEfsTemplate" },
+        "TimeoutInMinutes": 15
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "ElbRes": {
+      "Properties": {
+        "Parameters": {
+          "CertHostingService": { "Ref": "CertHostingService" },
+          "GitLabListenPort": "443",
+          "GitLabListenerCert": { "Ref": "GitLabListenerCert" },
+          "GitLabPassesSsh": { "Ref": "GitLabPassesSsh" },
+          "GitLabServicePort": { "Ref": "GitLabServicePort" },
+          "HaSubnets": {
+            "Fn::Join": [
+              ",",
+              { "Ref": "GitlabElbSubnets" }
+            ]
+          },
+          "ProxyPrettyName": { "Ref": "AWS::StackName" },
+          "SecurityGroupIds": {
+            "Fn::Join": [
+              ",",
+              [
+                { "Fn::GetAtt": [ "SgRes", "Outputs.AppSg" ] }
+              ]
+            ]
+          }
+        },
+        "TemplateURL": { "Ref": "GitlabElbTemplate" },
+        "TimeoutInMinutes": 15
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "IamRes": {
+      "Properties": {
+        "Parameters": {
+          "CloudwatchBucketName": { "Ref": "CloudwatchBucketName" },
+          "ConfigBucketPath": { "Ref": "ConfigBucketPath" },
+          "ElbName": { "Fn::GetAtt": [ "ElbRes", "Outputs.GitLabElbId" ] },
+          "GitlabBucketName": { "Fn::GetAtt": [ "S3Res", "Outputs.BucketName" ] },
+          "RolePrefix": { "Ref": "RolePrefix" }
+        },
+        "TemplateURL": { "Ref": "GitlabIamTemplate" },
+        "TimeoutInMinutes": 15
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "RdsRes": {
+      "Properties": {
+        "Parameters": {
+          "DbAdminName": { "Ref": "DbAdminName" },
+          "DbAdminPass": { "Ref": "DbAdminPass" },
+          "DbDataSize": { "Ref": "DbDataSize" },
+          "DbInstanceName": { "Ref": "DbInstanceName" },
+          "DbInstanceType": { "Ref": "DbInstanceType" },
+          "DbIsMultiAz": "true",
+          "DbNodeName": { "Ref": "DbNodeName" },
+          "DbSecurityGroup": { "Fn::GetAtt": [ "SgRes", "Outputs.RdsSg" ] },
+          "DbSubnets": {
+            "Fn::Join": [
+              ",",
+              { "Ref": "HaSvcSubnets" }
+            ]
+          },
+          "PgsqlVersion": { "Ref": "PgsqlVersion" }
+        },
+        "TemplateURL": { "Ref": "GitlabRdsTemplate" },
+        "TimeoutInMinutes": 120
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "S3Res": {
+      "Properties": {
+        "Parameters": {
+          "BucketInventoryTracking": { "Ref": "BucketInventoryTracking" },
+          "BucketName": { "Ref": "GitlabBucket" },
+          "FinalExpirationDays": { "Ref": "FinalExpirationDays" },
+          "ReportingBucket": { "Ref": "ReportingBucket" },
+          "RetainIncompleteDays": { "Ref": "RetainIncompleteDays" },
+          "TierToGlacierDays": { "Ref": "TierToGlacierDays" }
+        },
+        "TemplateURL": { "Ref": "GitlabBucketTemplate" },
+        "TimeoutInMinutes": 15
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    },
+    "SgRes": {
+      "Properties": {
+        "Parameters": {
+          "TargetVPC": { "Ref": "TargetVPC" }
+        },
+        "TemplateURL": { "Ref": "SecurityGroupTemplate" },
+        "TimeoutInMinutes": 10
+      },
+      "Type": "AWS::CloudFormation::Stack"
+    }
+  }
+}

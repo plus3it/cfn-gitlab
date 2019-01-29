@@ -3,23 +3,29 @@
   "Conditions": {
     "PrettyRole": {
       "Fn::Not": [
-        {
-          "Fn::Equals": [
-            { "Ref": "RolePrefix" },
-            ""
-          ]
-        }
+        { "Fn::Equals": [ { "Ref": "RolePrefix" }, "" ] }
+      ]
+    },
+    "SetupForCloudwatch": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "CloudwatchBucketName" }, "" ] }
+      ]
+    },
+    "UseElb": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "ElbName" }, "" ] }
       ]
     }
   },
   "Description": "This template sets up the IAM role needed by a GitLab instance",
   "Outputs": {
-    "InstanceRole": {
-      "Description": "Name of the instance role",
-      "Value": { "Ref": "InstanceRole" }
-    },
     "InstanceRoleArn": {
       "Description": "ARN of the instance role",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-InstanceRoleArn"
+        }
+      },
       "Value": {
         "Fn::GetAtt": [
           "InstanceRole",
@@ -27,28 +33,47 @@
         ]
       }
     },
+    "InstanceRoleName": {
+      "Description": "Name of the instance role",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-InstanceRoleName"
+        }
+      },
+      "Value": { "Ref": "InstanceRole" }
+    },
     "InstanceRoleProfile": {
       "Description": "Profile of the instance role",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-InstanceRoleProfile"
+        }
+      },
       "Value": { "Ref": "InstanceProfile" }
     }
   },
   "Parameters": {
+    "CloudwatchBucketName": {
+      "Default": "",
+      "Description": "Name of the S3 Bucket hosting the CloudWatch agent archive files",
+      "Type": "String"
+    },
     "ConfigBucketPath": {
       "Default": "",
       "Description": "S3 bucket-path to GitLab configuration template-file.",
       "Type": "String"
     },
-    "GitlabBucketArn": {
-      "Description": "Arn of the S3 Bucket used to host GitLab content.",
+    "ElbName": {
+      "Default": "",
+      "Description": "Logical name of the Classic ELB to attach EC2 instance to.",
+      "Type": "String"
+    },
+    "GitlabBucketName": {
+      "Description": "Name of the S3 Bucket used to host GitLab content.",
       "Type": "String"
     },
     "RolePrefix": {
       "Description": "Prefix to apply to IAM role to make things a bit prettier (optional).",
-      "Type": "String"
-    },
-    "ServiceTld": {
-      "Default": "amazonaws.com",
-      "Description": "TLD of the IAM service-trust.",
       "Type": "String"
     }
   },
@@ -65,14 +90,48 @@
               ],
               "Effect": "Allow",
               "Resource": [
-                { "Fn::Join": [ "", [
-                      { "Ref": "GitlabBucketArn" },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      { "Ref": "AWS::Partition" },
+                      ":s3:::",
+                      { "Ref": "GitlabBucketName" },
                       ""
-                ]]},
-                { "Fn::Join": [ "", [
-                      { "Ref": "GitlabBucketArn" },
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      { "Ref": "AWS::Partition" },
+                      ":s3:::",
+                      { "Ref": "GitlabBucketName" },
                       "/*"
-                ]]}
+                    ]
+                  ]
+                },
+                {
+                  "Fn::If": [
+                    "SetupForCloudwatch",
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn:",
+                          { "Ref": "AWS::Partition" },
+                          ":s3:::",
+                          { "Ref": "CloudwatchBucketName" },
+                          "/*"
+                        ]
+                      ]
+                    },
+                    { "Ref": "AWS::NoValue" }
+                  ]
+                }
               ],
               "Sid": "BackupsAccess"
             },
@@ -92,9 +151,55 @@
                       { "Ref": "ConfigBucketPath" }
                     ]
                   ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      { "Ref": "AWS::Partition" },
+                      ":s3:::",
+                      { "Ref": "ConfigBucketPath" },
+                      "/*"
+                    ]
+                  ]
                 }
               ],
               "Sid": "ConfigAccess"
+            },
+            {
+              "Fn::If": [
+                "UseElb",
+                {
+                  "Action": [
+                    "elasticloadbalancing:RegisterInstancesWithLoadBalancer"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn",
+                          ":",
+                          { "Ref": "AWS::Partition" },
+                          ":",
+                          "elasticloadbalancing",
+                          ":",
+                          { "Ref": "AWS::Region" },
+                          ":",
+                          { "Ref": "AWS::AccountId" },
+                          ":",
+                          "loadbalancer/",
+                          { "Ref": "ElbName" }
+                        ]
+                      ]
+                    }
+                  ],
+                  "Sid": "AddToElb"
+                },
+                { "Ref": "AWS::NoValue" }
+              ]
             },
             {
               "Action": [
@@ -208,7 +313,7 @@
                     ".",
                     [
                       "ec2",
-                      { "Ref": "ServiceTld" }
+                      { "Ref": "AWS::URLSuffix" }
                     ]
                   ]
                 }

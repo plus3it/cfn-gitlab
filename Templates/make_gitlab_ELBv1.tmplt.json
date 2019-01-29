@@ -1,0 +1,244 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Conditions": {
+    "EnableSshPassthru": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "GitLabPassesSsh" }, "" ] }
+      ]
+    },
+    "UseAcmHostedCert": {
+      "Fn::Equals": [ { "Ref": "CertHostingService" }, "ACM" ]
+    },
+    "UseInstanceId": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "GitLabInstanceId" }, "" ] }
+      ]
+    },
+    "UseProxyPrettyName": {
+      "Fn::Not": [
+        { "Fn::Equals": [ { "Ref": "ProxyPrettyName" }, "" ] }
+      ]
+    }
+  },
+  "Description": "Template for creating a public-facing ELB for users to connect through to the GitLab service.",
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Parameters": [
+            "ProxyPrettyName",
+            "SecurityGroupIds",
+            "HaSubnets",
+            "GitLabListenerCert",
+            "CertHostingService",
+            "GitLabListenPort",
+            "GitLabServicePort",
+            "GitLabPassesSsh",
+            "GitLabInstanceId"
+          ]
+        }
+      ]
+    }
+  },
+  "Outputs": {
+    "GitLabElbFqdn": {
+      "Description": "GitLab front-end's IP address",
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-ElbDnsName" } },
+      "Value": { "Fn::GetAtt": [ "GitLabPubElb", "DNSName" ] }
+    },
+    "GitLabElbId": {
+      "Description": "GitLab front-end's service address",
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-ElbId" } },
+      "Value": { "Ref": "GitLabPubElb" }
+    },
+    "GitLabElbRawUrl": {
+      "Description": "GitLab front-end's unaliased URL",
+      "Export": { "Name": { "Fn::Sub": "${AWS::StackName}-ElbRawUrl" } },
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "https://",
+            {
+              "Fn::GetAtt": [
+                "GitLabPubElb",
+                "DNSName"
+              ]
+            }
+          ]
+        ]
+      }
+    }
+  },
+  "Parameters": {
+    "GitLabInstanceId": {
+      "Default": "",
+      "Description": "(Optional) ID of the EC2-instance this template should create a proxy for.",
+      "Type": "String"
+    },
+    "GitLabListenPort": {
+      "Default": 443,
+      "Description": "TCP Port number on which the GitLab ELB listens for requests.",
+      "MaxValue": 65535,
+      "MinValue": 1,
+      "Type": "Number"
+    },
+    "GitLabListenerCert": {
+      "Default": "",
+      "Description": "Name/ID of the SSL Certificate to protect public listener.",
+      "Type": "String"
+    },
+    "GitLabPassesSsh": {
+      "AllowedValues": [
+        false,
+        true
+      ],
+      "Default": true,
+      "Description": "Whether to allow SSH passthrough to GitLab master.",
+      "Type": "String"
+    },
+    "GitLabServicePort": {
+      "Default": 80,
+      "Description": "TCP Port number that the GitLab host listens to.",
+      "MaxValue": 65535,
+      "Type": "Number"
+    },
+    "HaSubnets": {
+      "Description": "Select three subnets - each from different Availability Zones.",
+      "Type": "List<AWS::EC2::Subnet::Id>"
+    },
+    "CertHostingService": {
+      "AllowedValues": [
+        "ACM",
+        "IAM"
+      ],
+      "Default": "ACM",
+      "Description": "Select AWS service that is hosting the SSL certificate.",
+      "Type": "String"
+    },
+    "ProxyPrettyName": {
+      "Description": "(Optional) A short, human-friendly label to assign to the ELB (no capital letters).",
+      "Type": "String"
+    },
+    "SecurityGroupIds": {
+      "Description": "List of security groups to apply to the ELB.",
+      "Type": "List<AWS::EC2::SecurityGroup::Id>"
+    }
+  },
+  "Resources": {
+    "GitLabPubElb": {
+      "Metadata": {},
+      "Properties": {
+        "CrossZone": true,
+        "HealthCheck": {
+          "HealthyThreshold": "5",
+          "Interval": "30",
+          "Target": {
+            "Fn::Join": [
+              "",
+              [
+                "HTTP:",
+                { "Ref": "GitLabServicePort" },
+                "/users/sign_in"
+              ]
+            ]
+          },
+          "Timeout": "5",
+          "UnhealthyThreshold": "2"
+        },
+        "Instances": [
+          {
+            "Fn::If": [
+              "UseInstanceId",
+              { "Ref": "GitLabInstanceId" },
+              { "Ref": "AWS::NoValue" }
+            ]
+          }
+        ],
+        "Listeners": [
+          {
+            "Fn::If": [
+              "EnableSshPassthru",
+              {
+                "InstancePort": "22",
+                "InstanceProtocol": "TCP",
+                "LoadBalancerPort": "22",
+                "Protocol": "TCP"
+              },
+              { "Ref": "AWS::NoValue" }
+            ]
+          },
+          {
+            "InstancePort": { "Ref": "GitLabServicePort" },
+            "InstanceProtocol": "HTTP",
+            "LoadBalancerPort": { "Ref": "GitLabListenPort" },
+            "Protocol": "HTTPS",
+            "SSLCertificateId": {
+              "Fn::If": [
+                "UseAcmHostedCert",
+                {
+                  "Fn::Join": [
+                    ":",
+                    [
+                      "arn",
+                      { "Ref": "AWS::Partition"},
+                      "acm",
+                      { "Ref": "AWS::Region" },
+                      { "Ref": "AWS::AccountId" },
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "certificate/",
+                            { "Ref": "GitLabListenerCert" }
+                          ]
+                        ]
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    ":",
+                    [
+                      "arn",
+                      { "Ref": "AWS::Partition"},
+                      "iam:",
+                      { "Ref": "AWS::AccountId" },
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "server-certificate/",
+                            { "Ref": "GitLabListenerCert" }
+                          ]
+                        ]
+                      }
+                    ]
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "LoadBalancerName": {
+          "Fn::If": [
+            "UseProxyPrettyName",
+            { "Ref": "ProxyPrettyName" },
+            { "Ref": "AWS::NoValue" }
+          ]
+        },
+        "Scheme": "internet-facing",
+        "SecurityGroups": { "Ref": "SecurityGroupIds" },
+        "Subnets": { "Ref": "HaSubnets" },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "GitLab front-end ELB"
+          }
+        ]
+      },
+      "Type": "AWS::ElasticLoadBalancing::LoadBalancer"
+    }
+  }
+}
