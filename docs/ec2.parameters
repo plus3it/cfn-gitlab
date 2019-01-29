@@ -1,0 +1,187 @@
+[
+    {
+        "ParameterKey": "AdminPubkeyURL",
+        "ParameterValue": "https://s3.<AMAZON_REGION>.<AMAZON_URL_SUFFIX>/<S3_BUCKET_NAME>/<OBJECT_PATH_PREFIX>/<ADMIN_GROUP_PUBKEY_BUNDLE>" <-- (optional)
+    },
+    {
+        "ParameterKey": "AmiId",
+        "ParameterValue": "<AMI_ID>"
+    },
+    {
+        "ParameterKey": "AppVolumeDevice",
+        "ParameterValue": "<BOOLEAN>"
+    },
+    {
+        "ParameterKey": "AppVolumeMountPath",
+        "ParameterValue": "<WHERE_TO_MOUNT_SECONDARY_EBS>"
+    },
+    {
+        "ParameterKey": "AppVolumeSize",
+        "ParameterValue": "<SECONDARY_EBS_SIZE_IN_GB>"
+    },
+    {
+        "ParameterKey": "AppVolumeType",
+        "ParameterValue": "< gp2 || io1 || sc1 || st1 || standard>"
+
+    },
+    {
+        "ParameterKey": "BackupBucket",
+        "ParameterValue": "<BUCKET_NAME_FROM_NEWLY-CREATED_S3_RESOURCE>
+    },
+    {
+        "ParameterKey": "BackupFolder",
+        "ParameterValue": "Backups"
+    },
+    {
+        "ParameterKey": "CfnBootstrapUtilsUrl",
+        "ParameterValue": "https://s3.<AMAZON_REGION>.<AMAZON_URL_SUFFIX>/<OBJECT_PATH_PREFIX>/<BOOTSTRAP_ARCHIVE_NAME>"
+    },
+    {
+        "ParameterKey": "CfnEndpointUrl",
+        "ParameterValue": "https://cloudformation.<AMAZON_REGION>.<AMAZON_URL_SUFFIX>"
+    },
+    {
+        "ParameterKey": "CfnGetPipUrl",
+        "ParameterValue": "<URL_PATH_TO>/get-pip.py"
+    },
+    {
+        "ParameterKey": "CloudWatchAgentUrl",
+        "ParameterValue": "s3://<BUCKET_NAME>/<OBJECT_PATH_PREFIX>/<CWA_ARCHIVE_NAME>"
+    },
+    {
+        "ParameterKey": "ConfigBucketPath",
+        "ParameterValue": "<S3_BUCKET_NAME>/<OBJECT_PATH_PREFIX>/<GITLAB_CONFIG_TEMPLATE_NAME>"
+    },
+    {
+        "ParameterKey": "ElbName",
+        "ParameterValue": "<SHORT_ELB_NAME_FROM_NEWLY-CREATED_ELB_RESOURCE>"
+    },
+    {
+        "ParameterKey": "GitLabConfScript",
+        "ParameterValue": "https://s3.<AMAZON_REGION>.<AMAZON_URL_SUFFIX>/<S3_BUCKET_NAME>/<OBJECT_PATH_PREFIX>/gitlab_config.sh"
+    },
+    {
+        "ParameterKey": "GitLabPrepScript",
+        "ParameterValue": "https://s3.<AMAZON_REGION>.<AMAZON_URL_SUFFIX>/<S3_BUCKET_NAME>/<OBJECT_PATH_PREFIX>/gitlab_instprep.sh"
+    },
+    {
+        "ParameterKey": "GitLabRpmName",
+        "ParameterValue": "<GITLAB_RPM_NAME>"
+    },
+    {
+        "ParameterKey": "GitLabRpmSourceUri",
+        "ParameterValue": "<GITLAB_YUM_CONFIG_SOURCE>"
+    },
+    {
+        "ParameterKey": "GitRepoShareType",
+        "ParameterValue": "<nfs || glusterfs>"
+    },
+    {
+        "ParameterKey": "GitRepoShareUri",
+        "ParameterValue": "<FQDN_OF_NEWLY-CREATED_NAS_RESOURCE>:/git-data"
+    },
+    {
+        "ParameterKey": "InstanceRoleName",
+        "ParameterValue": "<ROLE_NAME_OF_NEWLY-CREATE_IAM_ROLE>"
+    },
+    {
+        "ParameterKey": "InstanceRoleProfile",
+        "ParameterValue": "<PROFILE_NAME_OF_NEWLY-CREATE_IAM_ROLE>"
+    },
+    {
+        "ParameterKey": "InstanceType",
+        "ParameterValue": "<VALID_EC2_INSTANCE_TYPE>"
+    },
+    {
+        "ParameterKey": "KeyPairName",
+        "ParameterValue": "<NAME_OF_SSH_PROVISIONING_KEY>" <-- (optional)
+    },
+    {
+        "ParameterKey": "NoPublicIp",
+        "ParameterValue": "<BOOLEAN>"
+    },
+    {
+        "ParameterKey": "NoReboot",
+        "ParameterValue": "<BOOLEAN>"
+    },
+    {
+        "ParameterKey": "NoUpdates",
+        "ParameterValue": "<BOOLEAN>"
+    },
+    {
+        "ParameterKey": "PrivateIp",
+        "ParameterValue": "<USUALLY_NULL>"
+    },
+    {
+        "ParameterKey": "ProvisionUser",
+        "ParameterValue": "<NAME_TO_ASSIGN_INITIAL_OS_LOGIN_USER>"
+    },
+    {
+        "ParameterKey": "ProxyName",
+        "ParameterValue": "<FQDN_OF_NEWLY-CREATED_ELB_RESOURCE>"
+    },
+    {
+        "ParameterKey": "PypiIndexUrl",
+        "ParameterValue": "<URL_OF_PIP_INDEX>"
+    },
+    {
+        "ParameterKey": "RdsDbAdmin",
+        "ParameterValue": "<DB_ADMIN_USER_NAME>"
+    },
+    {
+        "ParameterKey": "RdsDbHost",
+        "ParameterValue": "<FQDN_OF_NEWLY-CREATED_RDS_RESOURCE>"
+    },
+    {
+        "ParameterKey": "RdsDbInstance",
+        "ParameterValue": "<DB_INSTANCE_NAME>"
+    },
+    {
+        "ParameterKey": "RdsDbPasswd",
+        "ParameterValue": "<DB_ADMIN_USER_PASSWORD>"
+    },
+    {
+        "ParameterKey": "RootVolumeSize",
+        "ParameterValue": "<ANY_VALUE_EQUAL_OR_GREATER_THAN_AMI_DEFAULT>"
+    },
+    {
+        "ParameterKey": "SecurityGroupIds",
+        "ParameterValue": "<SECURITY_GROUP_IDS_OF_NEWLY-CREATED_SECURITY_GROUPS>"
+    },
+    {
+        "ParameterKey": "SubnetId",
+        "ParameterValue": "<SUBNET-ID_TO_DEPLOY_INSTANCE_TO>"  <-- Private subnet preferred
+    },
+    {
+        "ParameterKey": "ToggleCfnInitUpdate",
+        "ParameterValue": "A"
+    },
+    {
+        "ParameterKey": "WatchmakerAdminGroups",
+        "ParameterValue": "<LEAVE_NULL_IF_NO_AD/LDAP_INTEGRATION>"
+    },
+    {
+        "ParameterKey": "WatchmakerAdminUsers",
+        "ParameterValue": "<LEAVE_NULL_IF_NO_AD/LDAP_INTEGRATION>"
+    },
+    {
+        "ParameterKey": "WatchmakerAvailable",
+        "ParameterValue": "<BOOLEAN>"  <-- Skips OS-haredning if set to "false"
+    },
+    {
+        "ParameterKey": "WatchmakerComputerName",
+        "ParameterValue": "<MAY_BE_LEFT_NULL>" <-- DHCP-assigned name if left null
+    },
+    {
+        "ParameterKey": "WatchmakerConfig",
+        "ParameterValue": "<MAY_BE_LEFT_NULL>"
+    },
+    {
+        "ParameterKey": "WatchmakerEnvironment",
+        "ParameterValue": "<dev || test || prod>"  <-- Leav null if "WatchmakerAvailable" is "false"
+    },
+    {
+        "ParameterKey": "WatchmakerOuPath",
+        "ParameterValue": "<LEAVE_NULL_IF_NO_AD/LDAP_INTEGRATION>"
+    }
+]
