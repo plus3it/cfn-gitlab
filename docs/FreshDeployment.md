@@ -86,8 +86,8 @@ The first step is to launch the `make_gitlab_parent-infra-EFS.tmplt.json` templa
 
 After the parent template has been launched, monitor its progress:
 * Correct any errors encountered &mdash; usually bad parameters or permission errors on dependencies &mdash; and re-launch as necessary.
-* After Stack successfully completes, launch the `make_gitlab_EC2-instance.tmplt.json` parameter.
-
-Note: As with the `make_gitlab_parent-infra-EFS.tmplt.json` template, launching the `make_gitlab_EC2-instance.tmplt.json` template can be done through either the web UI or the AWS CLI utility. Similarly, use of a parameters-file is recommended.  See the [example file](ec2.parameters).
+* After Stack successfully completes, move on to [Instance Provisioning](#instance-provisioning)
 
 ### Instance Provisioning
+
+Launch the `make_gitlab_EC2-instance.tmplt.json` parameter. As with the `make_gitlab_parent-infra-EFS.tmplt.json` template, launching the `make_gitlab_EC2-instance.tmplt.json` template can be done through either the web UI or the AWS CLI utility. Similarly, use of a parameters-file is recommended.  See the [example file](ec2.parameters).
