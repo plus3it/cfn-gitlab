@@ -82,6 +82,6 @@ Note: If using the indirectly-deployed templates directly, omit use of the `make
 The first step is to launch the `make_gitlab_parent-infra-EFS.tmplt.json` template. This can be done through either the web UI or the AWS CLI utility.
 
 * Use by way of the web UI should be generally self-explanatory to those familiar with launching templates via that method.
-* When using the AWS CLI, it is recommended to pass all template parameters by way of a parameters file
+* When using the AWS CLI, it is recommended to pass all template parameters by way of a parameters-file. The parameters-file must contain a parameter-definition for any parameter that does not have a default value or for which an override is desired. See the [example file](infrastructure.parameters).
 
 ### Instance Provisioning
