@@ -90,4 +90,4 @@ After the parent template has been launched, monitor its progress:
 
 ### Instance Provisioning
 
-Launch the `make_gitlab_EC2-instance.tmplt.json` parameter. As with the `make_gitlab_parent-infra-EFS.tmplt.json` template, launching the `make_gitlab_EC2-instance.tmplt.json` template can be done through either the web UI or the AWS CLI utility. Similarly, use of a parameters-file is recommended.  See the [example file](ec2.parameters).
+Launch the `make_gitlab_EC2-instance.tmplt.json` template. As with the `make_gitlab_parent-infra-EFS.tmplt.json` template, launching the `make_gitlab_EC2-instance.tmplt.json` template can be done through either the web UI or the AWS CLI utility. Similarly, use of a parameters-file is recommended.  See the [example file](ec2.parameters).
