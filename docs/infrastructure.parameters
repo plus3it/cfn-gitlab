@@ -1,0 +1,118 @@
+[
+    {
+        "ParameterKey": "BucketInventoryTracking",
+        "ParameterValue": "<BOOLEAN>"
+    },
+    {
+        "ParameterKey": "CertHostingService",
+        "ParameterValue": "<ACM || IAM>"
+    },
+    {
+        "ParameterKey": "CloudwatchBucketName",
+        "ParameterValue": "<BUCKET_NAME_CONTAINING_AMAZONCLOUDWATCH_AGENT_ARCHIVE>"
+    },
+    {
+        "ParameterKey": "ConfigBucketPath",
+        "ParameterValue": "<BUCKET_NAME || BUCKET_NAME/PATH_KEY>"
+    },
+    {
+        "ParameterKey": "DbAdminName",
+        "ParameterValue": "<DB_ADMIN_USER_NAME>"
+    },
+    {
+        "ParameterKey": "DbAdminPass",
+        "ParameterValue": "<DB_ADMIN_USER_PASSWORD>"
+    },
+    {
+        "ParameterKey": "DbDataSize",
+        "ParameterValue": "<SIZE_IN_GB>" <-- Can be quite small (e.g., easily less than 25GiB)
+    },
+    {
+        "ParameterKey": "DbInstanceName",
+        "ParameterValue": "<DB_INSTANCE_NAME>"
+    },
+    {
+        "ParameterKey": "DbInstanceType",
+        "ParameterValue": "<DB_INSTANCE_TYPE>"
+    },
+    {
+        "ParameterKey": "DbNodeName",
+        "ParameterValue": "<MAY_BE_LEFT_NULL>"
+    },
+    {
+        "ParameterKey": "FinalExpirationDays",
+        "ParameterValue": "<HOW_MANY_DAYS_TO_KEEP_BACKUPS>"
+    },
+    {
+        "ParameterKey": "GitlabBucket",
+        "ParameterValue": "<MAY_BE_LEFT_NULL>"
+    },
+    {
+        "ParameterKey": "GitlabBucketTemplate",
+        "ParameterValue": "https://s3.<AWS_REGION>.<AWS_URL_SUFFIX>/<S3_BUCKET_NAME>/<OBJECT_PATH_PREFIX>/make_gitlab_S3-main_bucket.tmplt.json"
+    },
+    {
+        "ParameterKey": "GitlabEfsTemplate",
+        "ParameterValue": "https://s3.<AWS_REGION>.<AWS_URL_SUFFIX>/<S3_BUCKET_NAME>/<OBJECT_PATH_PREFIX>/make_gitlab_EFS.tmplt.json"
+    },
+    {
+        "ParameterKey": "GitlabElbSubnets",
+        "ParameterValue": "<USER_FACING_VPC_SUBNETS>"
+    },
+    {
+        "ParameterKey": "GitlabElbTemplate",
+        "ParameterValue": "https://s3.<AWS_REGION>.<AWS_URL_SUFFIX>/<S3_BUCKET_NAME>/<OBJECT_PATH_PREFIX>/make_gitlab_ELBv1.tmplt.json"
+    },
+    {
+        "ParameterKey": "GitlabIamTemplate",
+        "ParameterValue": "https://s3.<AWS_REGION>.<AWS_URL_SUFFIX>/<S3_BUCKET_NAME>/<OBJECT_PATH_PREFIX>/make_gitlab_IAM-role.tmplt.json"
+    },
+    {
+        "ParameterKey": "GitLabListenerCert",
+        "ParameterValue": "<ACM_CERT_ID or IAM_SERVER_CERTIFICATE_NAME>"
+    },
+    {
+        "ParameterKey": "GitLabPassesSsh",
+        "ParameterValue": "<BOOLEAN>"
+    },
+    {
+        "ParameterKey": "GitlabRdsTemplate",
+        "ParameterValue": "https://s3.<AWS_REGION>.<AWS_URL_SUFFIX>/<S3_BUCKET_NAME>/<OBJECT_PATH_PREFIX>/make_gitlab_RDS-pgsql.tmplt.json"
+    },
+    {
+        "ParameterKey": "GitLabServicePort",
+        "ParameterValue": "<PORT_NUMBER_INTERNAL_GITLAB_INSTANCE_LISTENS_ON>"
+    },
+    {
+        "ParameterKey": "HaSvcSubnets",
+        "ParameterValue": "<PRIVATE_VPC_SUBNETS>"
+    },
+    {
+        "ParameterKey": "PgsqlVersion",
+        "ParameterValue": "<PGSQL_VERSION_IN_X.Y.Z_NOTATION>"
+    },
+    {
+        "ParameterKey": "ReportingBucket",
+        "ParameterValue": "<NAME_OF_ACCOUNT_REPORTING_BUCKET>"
+    },
+    {
+        "ParameterKey": "RetainIncompleteDays",
+        "ParameterValue": "<HOW_LONG_TO_KEEP_BOTCHED_UPLOADS>"
+    },
+    {
+        "ParameterKey": "RolePrefix",
+        "ParameterValue": "<MAY_BE_LEFT_NULL>"
+    },
+    {
+        "ParameterKey": "SecurityGroupTemplate",
+        "ParameterValue": "https://s3.<AWS_REGION>.<AWS_URL_SUFFIX>/<S3_BUCKET_NAME>/<OBJECT_PATH_PREFIX>/make_gitlab_SGs.tmplt.json"
+    },
+    {
+        "ParameterKey": "TargetVPC",
+        "ParameterValue": "<DEPLOYMENT_VPC_ID>"
+    },
+    {
+        "ParameterKey": "TierToGlacierDays",
+        "ParameterValue": "<NUMBER_OF_DAYS_TO_KEEP_BACKUPS_IN_STANDARD_S3_TIER>"
+    }
+]

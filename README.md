@@ -21,4 +21,10 @@ Administrators can deploy the latest version of GitLab or specific versions targ
 
 The templates and scripts will enable GitLab administrators to more-easily use a "redeploy to upgrade" model - whether upgrading the underlying operating system or the GitLab software itself.
 
+Generic walkthroughs of templates use are available in the [docs](docs) directory:
+* [Fresh Deployment](docs/Deployment-Fresh.md)
+* [Parallel Upgrade](docs/Deployment-Upgrade_Parallel.md)
+* ["In place" OS Upgrade](docs/Deployment-Upgrade-In_Place-OS_Only.md)
+
+
 ![Build Status](https://travis-ci.org/plus3it/dotc-gitlab.svg?branch=master)
