@@ -6,7 +6,8 @@ This document is intended to walk the automation-user through the process of dep
 
 ## Caveats
 
-The automated deployment logic still does not account for ensuring that the previous instance's `/etc/gitlab-secrets.json` file gets carried over to the replacement instance (_see [Issue](https://github.com/plus3it/cfn-gitlab/issues/30)_). If users are storing secrets in gitlab, it will be necessary for the automation-user to account for this gap.
+1. While the vendor documentation typicall indicates that it's possible to successfully do `X.Y.z` to any arbitrary `X.Y'.z'` , "real life" has proven this to not be wholly true. This gap between "vendor documents" and reality widens as the delta between `Y` and `Y'` increases. Therefore, the upgrade procedure (below) outlines an iterative method for upgrading from `X.Y.z` to a target `X.Y'.z'` configuration.  
+1. The automated deployment logic still does not account for ensuring that the previous instance's `/etc/gitlab-secrets.json` file gets carried over to the replacement instance (_see [Issue](https://github.com/plus3it/cfn-gitlab/issues/30)_). If users are storing secrets in gitlab, it will be necessary for the automation-user to account for this gap.
 
 ## Dependencies
 
@@ -58,9 +59,9 @@ The "upgrade" process follows a generic workflow of:
 1. Deploy new EC2 stack &mdash; See _Wholly-New GitLab Service_'s [Instance Provisioning](Deployment-Fresh.md#instance-provisioning) section. Ensure to use the "standalone" deployment option at this phase of the parallel upgrade. *Ensure that GitLab version selected for install is the same as the current, user-facing version.*
 1. Deregister new EC2 from new ELB
 1. Login to new EC2 instance and esclate privileges to root (`sudo -i`)
-1. Ensure GitLab's backups directory exists (check the value of `backup_path` in the `/etc/gitlab/gitlab.rb file) &mdash; create as necessary and ensure directory is readable by the GitLab service user (typically `git`).
+1. Ensure GitLab's backups directory exists (check the value of `backup_path` in the `/etc/gitlab/gitlab.rb` file) &mdash; create as necessary and ensure directory is readable by the GitLab service user (typically `git`).
 1. Copy-down the previously-duplicated backup to the previously-determined GitLab backups directory
-1. Set the ownership of the downloaded backup file to match the GitLab service-user (typically `chown git:git /FULLY/QUALIFIED/FILE/PATH)
+1. Set the ownership of the downloaded backup file to match the GitLab service-user (typically `chown git:git /FULLY/QUALIFIED/FILE/PATH`)
 1. Follow the vendor-documented [restore procedures](https://docs.gitlab.com/ce/raketasks/backup_restore.html#restore-for-omnibus-gitlab-installations). Note: restoration of the `gitlab-secrets.json` file is only _strictly_-necessary if GitLab users have been storing secrets in their GitLab projects &mdash; be paranoid and assume that they have been.
 1. Determine the next-closest GitLab X.Y release to the instance's currently-installed GitLab (e.g., if deployed on 11.6.x, see if 11.7. is available)
 1. Up date to the highest available version within the next point-release (`yum install gitlab-ce-X.Y.\*`)
@@ -70,8 +71,8 @@ The "upgrade" process follows a generic workflow of:
 Optional:
 
 14. Re-deploy EC2-stack:
-    * If service will be a standalone instance, used the "Stack Update" option and change the deployed-to subnet (update the `SubnetId` parameter's value
-    * If desired end-state is AutoScale managed, deploy a new AutoScale stack-template &mdash; populating with the appropriate values borroed from the existing standalone template
+    * If service will be a standalone instance, used the "Stack Update" option and change the deployed-to subnet (update the `SubnetId` parameter's value)
+    * If desired end-state is AutoScale managed, deploy a new AutoScale stack-template &mdash; populating with the appropriate values borroed from the existing standalone template (see `gitlab-secrets.json` caveat about suitability of this option)
 
 ## Bucket-to-Bucket Data-Copy
 
