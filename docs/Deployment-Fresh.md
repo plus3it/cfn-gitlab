@@ -91,3 +91,45 @@ After the parent template has been launched, monitor its progress:
 ### Instance Provisioning
 
 Launch the `make_gitlab_EC2-instance.tmplt.json` template. As with the `make_gitlab_parent-infra-EFS.tmplt.json` template, launching the `make_gitlab_EC2-instance.tmplt.json` template can be done through either the web UI or the AWS CLI utility. Similarly, use of a parameters-file is recommended.  See the [example file](ec2.parameters).
+
+### Post-Launch Tasks
+
+A _brand new_ gitlab install will require a couple details be taken care of. These tasks take place at AWS, EC2's OS and Web/Application layers:
+
+1. (AWS layer) De-register the EC2 instance from the ELB
+1. (EC2 host) Login to the EC2 instance
+1. (EC2 host) Esclate privileges (`sudo -i`)
+1. (EC2 host) Edit the `/etc/gitlab/gitlab.rb` file:
+    * If set to the ELB's FQDN, set the `external_url` value to `http://<EC2>.<INTERNAL>.<FQDN>`
+    * Update gitlab's configuration (`gitlab-ctl reconfigure && gitlab-ctl restart`)
+1. (RDSH host) Use a web browser to visit `http://<EC2>.<INTERNAL>.<FQDN>`
+1. (RDSH host) Follow the on-screen steps for setting the new instance's admin user credentials
+1. (RDSH host) Validate new credentials by logging in as the `root` user using the new credentials
+1. (EC2 host) Edit the `/etc/gitlab/gitlab.rb` file:
+    * Update the `external_url` value to either `https://<ELB>.<FQDN>` or `https://<R53_ELB_ALIAS>.<FQDN>`
+    * Update gitlab's configuration (`gitlab-ctl reconfigure && gitlab-ctl restart`)
+1. (AWS layer) Re-register the EC2 instance to the ELB
+1. (Arbitrary browser-equipped host) Navigate to the most-recently set value for `external_url`
+1. (Arbitrary browser-equipped host) establish secondary administrators:
+    * Local-only Authentication configured:
+        1. Login with (local) `root` user
+        1. Go to user-administration tool
+        1. Define service-internal users; ensure to set the administrator attribute on them
+        1. Verify that each new secondary-administrator has received their initial-login email and was able to login
+    * Centralized Authtication configured:
+        1. If built-from `gitlab.rb.tmplt` file includes centralized authentication, login with a username from that namespace that should be set as a service administrator
+        1. Log out
+        1. Login with (local) `root` user
+        1. Go to user administration panel
+        1. Set the target (centralized-authentication) user as an administrator
+        1. Log out
+        1. Login with the (now admin-enabled) username from the centralized-authentication namespace
+        1. Verify access to administrator interfaces
+        1. Repeat sequence for enabling any further centralized-authentication namespace users as administrators
+1. (AWS layer) Re-deploy the GitLab-hosting EC2 (via "Stack Update") to verify configuration data is properly persisted
+1. (Arbitrary browser-equipped host) Login as an administrator and commence remaining GitLab configurtion tasks (establish other users, groups, etc.)
+
+**Notes**:
+When new local users are created, GitLab defaults to attempting to email them an account setup link. If network topology does not allow for this:
+* it will be necessary to set/update new users' passwords via the GitLab CLI console (outside the scope of this document).
+* Similarly, normal address-verification will not work: it will be desirable/necessary to affect this verification via the GitLab CLI console
