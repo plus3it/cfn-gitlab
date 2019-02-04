@@ -26,6 +26,7 @@ GITLAB_AD_BINDUSER="${GITLAB_AD_BINDUSER:-UNDEF}"
 GITLAB_AD_BINDPASS="${GITLAB_AD_BINDPASS:-UNDEF}"
 GITLAB_AD_SRCHBASE="${GITLAB_AD_SRCHBASE:-UNDEF}"
 GITLAB_REGION="${GITLAB_AWS_REGION:-UNDEF}"
+GITLAB_RPM_NAME="${GITLAB_RPM_NAME:-UNDEF}"
 UPLOADDIR="/var/opt/gitlab/git-data/uploads"
 UPLOADLNK="/var/opt/gitlab/gitlab-rails/uploads"
 
@@ -53,7 +54,15 @@ setenforce 0 || \
    err_exit "Failed to temp-disable SELinux"
 echo "Temp-disabled SELinux"
 
-
+# Install gitlab
+if [[ $( rpm --quiet -q "${GITLAB_RPM_NAME}" )$? -eq 0 ]]
+then
+   echo "${GITLAB_RPM_NAME} installed. Skipping further install attempts."
+else
+   printf "Attempting to install %s... " "${GITLAB_RPM_NAME}"
+   yum install -y "${GITLAB_RPM_NAME}" && echo "Success" || \
+   err_exit "Failed installing ${GITLAB_RPM_NAME}"
+fi
 
 #
 # Preserve the existing gitlab.rb file
