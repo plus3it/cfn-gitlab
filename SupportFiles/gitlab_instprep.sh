@@ -263,46 +263,6 @@ fi
 curl -skL "${REPOSRC}" -o /etc/yum.repos.d/GitLab.repo || \
    err_exit "Failed to install repodef for GitLab CE"
 echo "Successfully installed repodef for GitLab CE"
-# Ensure SCL repositories are available
-RELEASE=$(rpm -qf /etc/redhat-release --qf '%{name}')
-if [[ $(yum repolist -y all | grep -q scl)$? -ne 0 ]]
-then
-   yum install -y "${RELEASE}-scl" || \
-      err_exit "Attempted install of Software CoLlections repodefs failed."
-   echo "Successfully nstalled Software CoLlections repodefs"
-fi
-
-# Which ruby to install
-case $( repoquery ${GITLAB_RPM_NAME} --qf '%{version}\n' | cut -d '.' -f 1 ) in
-   10) RUBYVERS=rh-ruby23
-       ;;
-   11) RUBYVERS=rh-ruby24
-       ;;
-esac
-
-# Install a Ruby version that is FIPS compatible
-yum --enablerepo=*scl* install -y ${RUBYVERS} || \
-   err_exit "Install of updated Ruby RPM failed."
-echo "Installed updated Ruby RPM"
-
-# Permanently eable the SCL version of Ruby
-cat << EOF > /etc/profile.d/scl-ruby.sh
-source /opt/rh/${RUBYVERS}/enable
-export X_SCLS="\$(scl enable ${RUBYVERS} 'echo \$X_SCLS')"
-EOF
-
-# Add backupscript to crontab
-printf "Adding backup job to root's cron... "
-(
-  crontab -l 2>/dev/null
-  echo "0 23 * * * /usr/local/bin/backup.cron"
-) | \
-crontab - && echo "Success." || echo "Failed."
-
-# shellcheck disable=SC1091
-source /etc/profile.d/scl-ruby.sh || \
-   err_exit "Failed to reset Ruby-location to updated version"
-echo "Reset Ruby-location to updated version"
 
 # Disable Chef's FIPS stuff
 cat << EOF > /etc/profile.d/chef.sh
