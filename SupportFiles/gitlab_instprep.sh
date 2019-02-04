@@ -275,9 +275,16 @@ source /etc/profile.d/chef.sh || \
 echo "Shut off FIPS-checking in embedded Chef Gem"
 
 # Do base-install of GitLab RPM
-printf "Installing GitLab CE"
-InstGitlab && \
-echo "Install succeeded. Gitlab must now be configured"
+GITVERXYZ=${GITLAB_RPM_NAME//*-}
+if [[ ${GITVERXYZ%%.*} -ge 11 ]] &&
+   [[ $( systemctl is-active multi-user.target )$? -ne 0 ]]
+then
+   echo "${GITLAB_RPM_NAME} cannot be installed during this systemd state"
+else
+   printf "Installing GitLab CE"
+   InstGitlab && \
+   echo "Install succeeded. Gitlab must now be configured"
+fi
 
 # Set up persistent storage directory
 ValidShare
