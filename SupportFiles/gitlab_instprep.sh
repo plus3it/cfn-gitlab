@@ -170,7 +170,7 @@ function ValidShare {
          (
           printf "%s\t/var/opt/gitlab/git-data\tnfs4\trw,relatime,vers=4.1," "${SHAREURI}" ;
           printf "rsize=1048576,wsize=1048576,namlen=255,hard,";
-          printf "proto=tcp,timeo=600,retrans=2\t0 0\n"
+          printf "proto=tcp,timeo=600,retrans=2,_netdev\t0 0\n"
          ) >> /etc/fstab || err_exit "Failed to add NFS volume to fstab"
          mount /var/opt/gitlab/git-data || err_exit "Failed to mount GitLab repository dir"
          ;;
@@ -178,7 +178,7 @@ function ValidShare {
          echo "Adding Gluster-hosted, persisted git repository data to fstab"
          (
           printf "%s\t/var/opt/gitlab/git-data\tglusterfs\t" "${SHAREURI}" ;
-          printf "defaults\t0 0\n"
+          printf "defaults,_netdev\t0 0\n"
          ) >> /etc/fstab || err_exit "Failed to add Gluster volume to fstab"
          mount /var/opt/gitlab/git-data || err_exit "Failed to mount GitLab repository dir"
          ;;
