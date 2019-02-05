@@ -170,7 +170,7 @@ function ValidShare {
          (
           printf "%s\t/var/opt/gitlab/git-data\tnfs4\trw,relatime,vers=4.1," "${SHAREURI}" ;
           printf "rsize=1048576,wsize=1048576,namlen=255,hard,";
-          printf "proto=tcp,timeo=600,retrans=2\t0 0\n"
+          printf "proto=tcp,timeo=600,retrans=2,_netdev\t0 0\n"
          ) >> /etc/fstab || err_exit "Failed to add NFS volume to fstab"
          mount /var/opt/gitlab/git-data || err_exit "Failed to mount GitLab repository dir"
          ;;
@@ -178,7 +178,7 @@ function ValidShare {
          echo "Adding Gluster-hosted, persisted git repository data to fstab"
          (
           printf "%s\t/var/opt/gitlab/git-data\tglusterfs\t" "${SHAREURI}" ;
-          printf "defaults\t0 0\n"
+          printf "defaults,_netdev\t0 0\n"
          ) >> /etc/fstab || err_exit "Failed to add Gluster volume to fstab"
          mount /var/opt/gitlab/git-data || err_exit "Failed to mount GitLab repository dir"
          ;;
@@ -263,46 +263,6 @@ fi
 curl -skL "${REPOSRC}" -o /etc/yum.repos.d/GitLab.repo || \
    err_exit "Failed to install repodef for GitLab CE"
 echo "Successfully installed repodef for GitLab CE"
-# Ensure SCL repositories are available
-RELEASE=$(rpm -qf /etc/redhat-release --qf '%{name}')
-if [[ $(yum repolist -y all | grep -q scl)$? -ne 0 ]]
-then
-   yum install -y "${RELEASE}-scl" || \
-      err_exit "Attempted install of Software CoLlections repodefs failed."
-   echo "Successfully nstalled Software CoLlections repodefs"
-fi
-
-# Which ruby to install
-case $( repoquery ${GITLAB_RPM_NAME} --qf '%{version}\n' | cut -d '.' -f 1 ) in
-   10) RUBYVERS=rh-ruby23
-       ;;
-   11) RUBYVERS=rh-ruby24
-       ;;
-esac
-
-# Install a Ruby version that is FIPS compatible
-yum --enablerepo=*scl* install -y ${RUBYVERS} || \
-   err_exit "Install of updated Ruby RPM failed."
-echo "Installed updated Ruby RPM"
-
-# Permanently eable the SCL version of Ruby
-cat << EOF > /etc/profile.d/scl-ruby.sh
-source /opt/rh/${RUBYVERS}/enable
-export X_SCLS="\$(scl enable ${RUBYVERS} 'echo \$X_SCLS')"
-EOF
-
-# Add backupscript to crontab
-printf "Adding backup job to root's cron... "
-(
-  crontab -l 2>/dev/null
-  echo "0 23 * * * /usr/local/bin/backup.cron"
-) | \
-crontab - && echo "Success." || echo "Failed."
-
-# shellcheck disable=SC1091
-source /etc/profile.d/scl-ruby.sh || \
-   err_exit "Failed to reset Ruby-location to updated version"
-echo "Reset Ruby-location to updated version"
 
 # Disable Chef's FIPS stuff
 cat << EOF > /etc/profile.d/chef.sh
@@ -315,9 +275,16 @@ source /etc/profile.d/chef.sh || \
 echo "Shut off FIPS-checking in embedded Chef Gem"
 
 # Do base-install of GitLab RPM
-printf "Installing GitLab CE"
-InstGitlab && \
-echo "Install succeeded. Gitlab must now be configured"
+GITVERXYZ=${GITLAB_RPM_NAME//*-}
+if [[ ${GITVERXYZ%%.*} -ge 11 ]] &&
+   [[ $( systemctl is-active multi-user.target )$? -ne 0 ]]
+then
+   echo "${GITLAB_RPM_NAME} cannot be installed during this systemd state"
+else
+   printf "Installing GitLab CE"
+   InstGitlab && \
+   echo "Install succeeded. Gitlab must now be configured"
+fi
 
 # Set up persistent storage directory
 ValidShare
